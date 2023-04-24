@@ -1,0 +1,558 @@
+---
+title: "Adv Statistical Modelling"
+author: "Ridwan_Abdusalam"
+date: "2023-02-08"
+output:
+  pdf_document: default
+---
+
+```{r}
+```
+
+## Non constant variance
+
+```{r}
+# Load the library faraway and the pipeline data
+library(faraway)
+library(ggplot2)
+library(lmtest)
+data(pipeline)
+
+#1.  
+#Fit the simple linear regression model and examine the residuals
+fit <- lm(Lab ~ Field, data = pipeline)
+res <- residuals(fit)
+
+
+#2.
+#Using ggplot to check for non-constant variance:
+ggplot(data = pipeline, aes(x = Field, y = res)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  ggtitle("Residual Plot for Simple Linear Regression")
+# The residual plot shows the residuals on the y-axis and the values of Field on the x-axis. The dotted line represents the y-intercept (0). The pattern shows presence of non-constant variance.
+
+# Perform the Breusch-Pagan test to check for non-constant variance:
+#Null Hypothesis (H0): The variance of the residuals is constant (homoscedasticity)
+#Alternate Hypothesis (Ha): The variance of the residuals is not constant (heteroscedasticity)
+
+bptest(fit)
+#With p-value = 6.185e-05 at 0.05 sig. level, we reject the null hypothesis and conclude that there's presence of heteroscedasticity
+
+#Using transformation to account for the non-constant variance.
+#Use ggplot to create residual plots for the square root, log, and inverse transformations of Field
+
+ggplot(data = pipeline, aes(x = sqrt(Field), y = res)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  ggtitle("Residual Plot for Sqrt Transformation")
+
+ggplot(data = pipeline, aes(x = log(Field), y = res)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  ggtitle("Residual Plot for Log Transformation")
+
+ggplot(data = pipeline, aes(x = 1/Field, y = res)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  ggtitle("Residual Plot for Inverse Transformation")
+
+
+#Log transformation makes the relationship between the transformed values of Field and the residuals closest to linear with constant variance, and is therefore adviced as the methos of transformation
+
+# Fit the regression model using the log-transformed explanatory variable (Field)
+# Log transformation of Field
+model_log_field <- lm(Lab ~ log(pipeline$Field), data = pipeline)
+
+# Perform the Breusch-Pagan test:
+#Null Hypothesis (H0): The variance of the residuals is constant (homoscedasticity)
+#Alternate Hypothesis (Ha): The variance of the residuals is not constant (heteroscedasticity)
+
+bptest(model_log_field)
+#With p-value = 0.1977 at 0.05 sig. level, we fail to reject the null hypothesis and conclude that there's presence of homoscedasticity
+
+```
+
+## Box Cox Transformation
+
+```{r}
+
+# Load the faraway library and the ozone dataset
+library(faraway)
+data(ozone)
+
+# Fit a linear model with the predictors temp, humidity, and ibh
+fit <- lm(O3 ~ temp + humidity + ibh, data = ozone)
+
+# Plot the Box-Cox plot to find the best transformation on the response
+library(MASS)
+boxcox(fit, plotit = TRUE)
+
+#Transformation parameter with the largest log-likelihood = 0.3 => The best transformation
+
+
+# Transform the response by taking it to the power of 0.3
+ozone$O3_transformed <- ozone$O3^0.3
+
+# Fit a linear model with the transformed response and predictors temp, humidity, and ibh
+fit_transformed <- lm(O3_transformed ~ temp + humidity + ibh, data = ozone)
+
+# Check the residuals of the transformed model to see if they are approximately normally distributed
+par(mfrow = c(2, 2))
+plot(fit_transformed)
+
+
+```
+
+## Feature selection methods
+```{r}
+# Load the ISLR library
+library(ISLR)
+
+#1.
+
+# Load the Boston dataset into a dataframe
+data(Boston)
+
+# Use the summary function to get a quick overview of the dataset
+summary(Boston)
+
+# Use the str function to get a detailed structure of the dataset
+str(Boston)
+
+# Create a scatterplot matrix using the pairs function
+pairs(Boston)
+
+library(ggplot2)
+
+
+pairs = combn(names(Boston), 2)
+for (i in 1:ncol(pairs)){
+  ggplot(Boston, aes(x = Boston[,pairs[1, i]], y = Boston[,pairs[2, i]])) +
+    geom_point() +
+    ggtitle(paste0(pairs[1, i], " vs ", pairs[2, i])) +
+    xlab(pairs[1, i]) +
+    ylab(pairs[2, i])
+}
+
+#The Boston dataset contains 506 observations on 14 different variables for neighborhoods in the Boston area. The variables include information on crime rate, average number of rooms per dwelling, accessibility to radial highways, property tax rate, and other 11 variables (  zn, indus, chas, nox, rm age, dis, rad, tax, ptratio, black, lstat, medv) that are assumed to collectively determine  the rate of crime. 
+
+#crime rate ranges from 0.00632 to 88.9
+
+#From the scatterplot matrix, rm (the average number of rooms per dwelling) is positively correlated with medv (the median value of owner-occupied homes), while lstat (the proportion of lower status of the population) is negatively correlated with medv.
+
+#Age is negatively correlated with dis and also positively correlated with lsat. There's a negative correlation between dis and lsat, while dis is positively correlated with medv. nox is positively correlated with age.
+
+
+#Based on the pairwise plot we can identify relationships between variables, but we can't say which variables are more important until we use other statistical methods, such as regression analysis or feature selection.
+
+#2.
+
+#Regression model between y and the other variables
+fit <- lm(crim ~ ., data = Boston)
+summary(fit)
+
+#Learnings:
+#Holding all other contions constant:
+# For every unit increase in zn, there's about 0.045 increase in crime rate.
+# For every unit increase in dis, there's about 0.99 deccrease in crime rate.
+# For every unit increase in rad, there's about 0.59 increase in crime rate.
+# For every unit increase in black, there's about 0.0075 decrease in crime rate.
+# For every unit increase in medv, there's about 0.199 decrease in crime rate.
+
+# The suginficance of p-values are based on the null and alternated hypothesis, and the significance level (type I error we are willing to accommodate) set for the hypothesis testing.
+
+# If the p-value is smaller than the significance level (e.g. 0.05), we reject the null hypothesis that the corresponding coefficient is zero and conclude that the predictor is significantly related to the response (significantly explains the variation in the response variable).
+
+#Using the result of the regression, zn, dis, rad, black, and medv are significant at 0.05 significance level, in explaining the variations in crime rate.
+
+
+#3.Comment on the interpretation of the coefficients of the predictors.
+
+# In interpreting the coefficients with their magnitudes. Larger absolute values of coefficients indicate more important predictors, as they have a greater impact on the response variable (provided that the scale of the predictor variables do not impact the magnitude of the coefficients, so and no standardization of predictors is necessary.)
+
+#Using the above result (and assumption above), the predictor dis, rad and medv are more important in explainig the variation in crime rates, (in decreasing order of importance) as they show the highest magnitude.
+
+# However, the p-values associated with each coefficient in the regression summary reflect the significance of each predictor in explaining the variation in the response variable
+
+
+#4.
+#install.packages("rsample")
+#install.packages("caret")
+
+library(leaps)
+library(rsample)
+library(caret)
+
+Y <- Boston$crim
+X <- Boston[,-c(1)]
+
+
+# Forward Stepwise with p-value threshold of 0.1
+regfit.fwd <- regsubsets(X, Y, method = "forward", threshold = 0.1)
+
+# Backward Stepwise with p-value threshold of 0.1
+regfit.bwd <- regsubsets(X, Y, method = "backward", threshold = 0.1)
+
+# Forward Stepwise with AIC
+regfit.fwd.aic <- regsubsets(X, Y, method = "forward", criterion = "aic")
+
+# Forward Stepwise with BIC
+regfit.fwd.bic <- regsubsets(X, Y, method = "forward", criterion = "bic")
+
+# Forward Stepwise with Mallows Cp
+regfit.fwd.cp <- regsubsets(X, Y, method = "forward", criterion = "cp")
+
+
+set.seed(123)
+train_index <- sample(nrow(X), 0.8 * nrow(X))
+X_train <- X[train_index,]
+Y_train <- Y[train_index]
+X_test <- X[-train_index,]
+Y_test <- Y[-train_index]
+
+
+set.seed(123)
+control <- trainControl(method = "repeatedcv", number = 10, repeats = 5, verboseIter = FALSE)
+
+# List to store the MSE for each model
+mse_list <- list()
+
+# Model 1: Forward Stepwise with p-value threshold of 0.1
+model1 <- train(x = X_train, y = Y_train, method = "lm", trControl = control, subset = regfit.fwd$vbest)
+mse1 <- mean((predict(model1, X_test) - Y_test)^2)
+mse_list[[1]] <- mse1
+
+# Model 2: Backward Stepwise with p-value threshold of 0.1
+model2 <- train(x = X_train, y = Y_train, method = "lm", trControl = control, subset = regfit.bwd$vbest)
+mse2 <- mean((predict(model2, X_test) - Y_test)^2)
+mse_list[[2]] <- mse2
+
+# Model 3: Forward Stepwise with AIC
+model3 <- train(x = X_train, y = Y_train, method = "lm", trControl = control, subset = regfit.fwd.aic$vbest)
+mse3 <- mean((predict(model3, X_test) - Y_test)^2)
+mse_list[[3]] <- mse3
+
+# Model 4: Forward Stepwise with BIC
+model4 <- train(x = X_train, y = Y_train, method = "lm", trControl = control, subset = regfit.fwd.bic$vbest)
+mse4 <- mean((predict(model4, X_test) - Y_test)^2)
+mse_list[[4]] <- mse4
+
+# Model 5: Forward Stepwise with Mallows Cp
+model5 <- train(x = X_train, y = Y_train, method = "lm", trControl = control, subset = regfit.fwd.cp$vbest)
+mse5 <- mean((predict(model5, X_test) - Y_test)^2)
+mse_list[[5]] <- mse5
+
+# Find the model with the lowest MSE
+best_model <- which.min(sapply(mse_list, function(x) x))
+
+# Print the MSE of the best model
+print(paste("The best model is model", best_model, "with MSE:", mse_list[[best_model]]))
+
+
+#5.
+
+#The reason one method selects some features over others is because each method uses a different criterion for feature selection:
+
+#Forward stepwise with a p-value threshold of 0.1: 
+#This method selects features one at a time, starting from the most significant feature, based on their p-values. If the p-value of a feature is greater than 0.1, it is not included in the model. This criterion is based on the statistical significance of the features and assumes that features with low p-values are more likely to be related to the response variable.
+
+#Backward stepwise with a p-value threshold of 0.1: 
+#This method is similar to forward stepwise, but it starts with all features and removes the least significant feature at each step. The advantage of this method is that it is simple and computationally efficient, but it can be affected by the issue of multiple testing as well.
+
+#Forward stepwise with AIC: 
+#This method selects features based on the Akaike Information Criteria (AIC), which balances the goodness of fit of the model with its complexity. The advantage of this method is that it takes into account both the fit of the model and its complexity, but it can be biased towards overfitting if the number of features is large. AIC consider both the goodness of fit of the model and its complexity, and it penalize models with many features and reward models that have a good fit while keeping the number of features small.
+
+#Forward stepwise with BIC: 
+#This method selects features based on the Bayesian Information Criteria (BIC), which balances the goodness of fit of the model with its complexity, but with a stronger penalty for complexity than AIC. The advantage of this method is that it takes into account both the fit of the model and its complexity, and it has a stronger penalty for complexity than AIC, but it can be biased towards underfitting if the number of features is large. BIC also consider both the goodness of fit of the model and its complexity, and penalize models with many features and reward models that have a good fit while keeping the number of features small.
+
+#Forward stepwise with Mallows Cp: 
+#This method selects features based on the Mallows Cp criterion, which balances the goodness of fit of the model with its complexity. The advantage of this method is that it takes into account both the fit of the model and its complexity, but it can be affected by outliers and irrelevant features.
+
+```
+
+## Cross Validation
+```{r}
+#1: Generate dataset
+n <- 10000
+X <- runif(n, min = 0, max = 1)
+epsilon <- rnorm(n, mean = 0, sd = 0.5)
+Y <- 3 * X^5 + 2 * X^2 + epsilon
+
+
+# 2.
+
+#Split into training and test set
+set.seed(100) # for reproducibility
+index <- sample(1:n, n * 0.8)
+train_x <- X[index]
+train_y <- Y[index]
+test_x <- X[-index]
+test_y <- Y[-index]
+
+
+#3.
+
+#Cross Validation
+cv_error <- rep(0, 10) # initialize CV error
+for (d in 1:10) {
+  fold_size <- floor(length(train_x) / 5)
+  mse_error <- rep(0, 5) # initialize MSE error
+  for (i in 0:(4)) {
+    start <- i * fold_size + 1
+    end <- min((i + 1) * fold_size, length(train_x))
+    test_indices <- start:end
+    train_indices <- -test_indices
+    train_x_cv <- train_x[train_indices]
+    train_y_cv <- train_y[train_indices]
+    test_x_cv <- train_x[test_indices]
+    test_y_cv <- train_y[test_indices]
+    model <- lm(train_y_cv ~ poly(train_x_cv, d))
+    y_pred <- predict(model, newdata = data.frame(train_x_cv = test_x_cv))
+    mse_error[i + 1] <- mean((y_pred - test_y_cv)^2)
+  }
+  cv_error[d] <- mean(mse_error)
+}
+
+
+# Step 4: Plot CV error vs. d
+plot(1:10, cv_error, type = "l", xlab = "d", ylab = "CV Error")
+
+#Model selection
+train_error <- rep(0, 10) # initialize training MSE
+test_error <- rep(0, 10) # initialize test MSE
+for (d in 1:10) {
+  model <- lm(train_y ~ poly(train_x, d))
+  y_pred_train <- predict(model, newdata = data.frame(train_x))
+  y_pred_test <- predict(model, newdata = data.frame(test_x))
+  train_error[d] <- mean((y_pred_train - train_y)^2)
+  test_error[d] <- mean((y_pred_test - test_y)^2)
+}
+
+# Plot test MSE and training MSE
+plot(1:10, train_error, type = "l", xlab = "d", ylab = "Training MSE")
+lines(1:10, test_error, col = "red", xlab = "d", ylab = "Test MSE")
+legend("topright", c("Training MSE", "Test MSE"), col = c("black", "red"), lty = c(1,1))
+
+# optimal MSE at  d = 10
+
+
+#4.
+
+#Use the entire training set for training the models.
+# Step 1: Generate dataset
+n <- 10000
+X <- runif(n, min = 0, max = 1)
+epsilon <- rnorm(n, mean = 0, sd = 0.5)
+Y <- 3 * X^5 + 2 * X^2 + epsilon
+
+# Step 2: Split into training and test set
+set.seed(100) # for reproducibility
+index <- sample(1:n, n * 0.8)
+train_x <- X[index]
+train_y <- Y[index]
+test_x <- X[-index]
+test_y <- Y[-index]
+
+# Step 3: Model selection
+train_error <- rep(0, 10) # initialize training MSE
+test_error <- rep(0, 10) # initialize test MSE
+for (d in 1:10) {
+  model <- lm(train_y ~ poly(train_x, d))
+  y_pred_train <- predict(model, newdata = data.frame(train_x))
+  y_pred_test <- predict(model, newdata = data.frame(test_x))
+  train_error[d] <- mean((y_pred_train - train_y)^2)
+  test_error[d] <- mean((y_pred_test - test_y)^2)
+}
+
+# Step 4: Plot test MSE and training MSE
+plot(1:10, train_error, type = "l", xlab = "d", ylab = "Training MSE")
+lines(1:10, test_error, col = "red", xlab = "d", ylab = "Test MSE")
+legend("topright", c("Training MSE", "Test MSE"), col = c("black", "red"), lty = c(1,1))
+
+#Finding the optimal train_error
+which.min(train_error)
+
+#Finding the optimal mse_test
+which.min(test_error)
+
+```
+
+
+## Bias Variance Tradeoff
+
+```{r}
+
+set.seed(123)
+
+n <- 100
+d_values <- 1:10
+
+bias <- numeric(10)
+variance <- numeric(10)
+predictions <- numeric(1000)
+
+# Generating 1000 datasets
+for(i in 1:1000){
+  
+  X <- runif(n, 0, 1)
+  epsilon <- rnorm(n, 0, sqrt(0.5))
+  Y <- 3 * X^5 + 2 * X^2 + epsilon
+  
+  x_test <- 1.01
+  
+  # Fitting 10 models for each dataset
+  for(j in 1:10){
+    d <- d_values[j]
+    poly_X <- poly(X, d, raw = TRUE)
+    model <- lm(Y ~ poly_X)
+    
+    # Storing the predictions for x = 1.01
+    prediction <- predict(model, newdata = data.frame(X = x_test))
+    predictions[j] <- predictions[j] + prediction
+    bias[j] <- bias[j] + (prediction - 3 * x_test^5 - 2 * x_test^2)
+    variance[j] <- variance[j] + prediction^2
+  
+  }
+}  
+
+# Dividing the sum of predictions by 1000 to get the average prediction
+predictions <- predictions / 1000
+
+# Calculating the true value for x = 1.01
+true_value <- 3 * 1.01^5 + 2 * 1.01^2
+
+# Calculating the bias
+bias <- abs(predictions - true_value)
+
+# Calculating the variance
+var_predictions <- numeric(10)
+for(j in 1:10){
+  var_prediction <- 0
+  for(i in 1:1000){
+    var_prediction <- var_prediction + (predictions[j] - predictions[j, i])^2
+  }
+  var_predictions[j] <- var_prediction / 1000
+}
+
+# Plotting the bias and variance as a function of d
+par(mfrow = c(2, 1))
+
+# Plotting the bias
+plot(d_values, bias, type = 'l', col = 'red', xlab = 'Degree of Polynomial', ylab = 'Bias')
+# Plotting the variance
+plot(d_values, var_predictions, type = 'l', col = 'green', xlab = 'Degree of Polynomial', ylab = 'Variance')
+
+
+# Generating data with Xi in U[0, 10]
+set.seed(1)
+n <- 100
+X <- runif(n, 0, 10)
+Y <- 3 * X^5 + 2 * X^2 + rnorm(n, 0, sqrt(0.5))
+
+# Splitting into training and test sets
+train_index <- sample(1:n, 0.8 * n)
+train_set <- data.frame(X = X[train_index], Y = Y[train_index])
+test_set <- data.frame(X = X[-train_index], Y = Y[-train_index])
+
+# Generating 1000 simulated training datasets
+bias <- numeric(1000)
+var_predictions <- numeric(1000)
+d_values <- 1:10
+for (i in 1:1000) {
+  train_sim <- train_set[sample(1:nrow(train_set), nrow(train_set), replace = TRUE), ]
+  for (d in d_values) {
+    model <- lm(Y ~ poly(X, d), data = train_sim)
+    bias[i] <- model$coefficients[2] - 3
+    var_predictions[i] <- mean((predict(model, newdata = data.frame(X = 1.01)) - 3)^2)
+  }
+}
+
+# Calculating the average bias and variance for each degree of polynomial
+bias <- sapply(split(bias, rep(1:10, each = 1000)), mean)
+var_predictions <- sapply(split(var_predictions, rep(1:10, each = 1000)), mean)
+
+# Plotting the bias and variance as a function of d
+
+# Plotting the bias
+plot(d_values, bias, type = 'l', color = 'red', xlab = 'Degree of Polynomial', ylab = 'Bias')
+# Plotting the variance
+plot(d_values, var_predictions, type = 'l', color = 'green', xlab = 'Degree of Polynomial', ylab = 'Variance')
+
+
+
+n = 100
+d_values = 1:10
+x_test = -0.5
+bias = numeric(length(d_values))
+var_predictions = numeric(length(d_values))
+
+for (i in 1:1000){
+  X = runif(n, min=0, max=10)
+  Y = 3 * X^5 + 2 * X^2 + rnorm(n, mean = 0, sd = 0.5)
+  df = data.frame(X = X, Y = Y)
+  train = df[1:80,]
+  test = df[81:100,]
+  
+  for (j in 1:length(d_values)){
+    d = d_values[j]
+    fit = lm(Y ~ poly(X, d), data = train)
+    pred = predict(fit, newdata = data.frame(X = x_test))
+    bias[j] = bias[j] + (pred - 3 * x_test^5 - 2 * x_test^2)^2/1000
+    var_predictions[j] = var_predictions[j] + sum((predict(fit, newdata = test) - test$Y)^2)/1000
+  }
+}
+
+plot(d_values, bias, type = 'l', col = 'red', xlab = 'Degree of Polynomial', ylab = 'Bias')
+plot(d_values, var_predictions, type = 'l',col ='green',xlab ='Degree of Polynomial',ylab = 'Variance')
+
+
+
+
+#The plots show the relationship between the degree of polynomial (d) and the bias and variance of the predictions. As the degree of polynomial increases, the bias decreases, but the variance increases. This relationship is known as the bias-variance tradeoff.
+
+#The implications of this tradeoff are that as we increase the complexity of the model, the predictions become more accurate, but the risk of overfitting increases. Overfitting occurs when the model becomes too complex and starts to fit the noise in the data rather than the underlying pattern. This leads to a high variance and poor generalization performance on new data.
+
+#To mitigate the issues, one can use regularization techniques such as L1 or L2 regularization. This involves adding a penalty term to the loss function to penalize large coefficients and prevent overfitting. Another approach is to use cross-validation to choose the optimal degree of polynomial and avoid overfitting.
+
+#In addition, we can try to use a more complex model only when necessary, and consider other simpler models first. A good approach is to start with a simple model and gradually increase the complexity if the performance of the simple model is not good enough.
+
+
+
+
+
+
+
+n <- 100
+num_datasets <- 1000
+bias <- numeric(10)
+variance <- numeric(10)
+preds <- matrix(NA, nrow = num_datasets, ncol = 10)
+# Part1. For each of the simulated training dataset you generated, train 10 different
+# models (d ∈ [1, . . . , 10]. ) Store and compute the prediction for x = 1.01
+set.seed(1)
+for (i in 1:num_datasets){
+ x <- runif(n, min = 0, max = 1)
+ err <- rnorm(n, mean = 0, sd = 0.5)
+ y <- 3 * x^5 + 2 * x^2 + err
+ for(j in 1:10){
+ regress<-lm(y ~ poly(x, j))
+ preds[i, j] <- predict(regress, newdata = data.frame(x = 1.01))
+ }
+}
+
+
+for (d in 1:10) {
+ mean_pred <- mean(preds[, d])
+ bias[d] <- (mean_pred - (3 * 1.01**5 + 2 * 1.01**2))^2
+ variance[d] <- var(preds[, d])
+}
+plot(bias, xlab = "d")
+
+
+
+
+
+
+
+```

@@ -1,0 +1,191 @@
+---
+title: "Assignment 2"
+author: "Ridwan_Abdusalam"
+date: "2023-01-30"
+output: pdf_document
+---
+
+```{r}
+
+```
+
+## Probability Review  
+You should switch doors. If you switch, your probability of winning the car is 2/3, while if you do not switch, your probability of winning the car is 1/3.
+
+Initially, before the host opens door number 3, there are three doors, each with equal probability of having the car behind it. After the host opens door number 3, revealing a goat, the probability of the car being behind door number 1 remains unchanged (1/3), while the probability of the car being behind door number 2 becomes 2/3 (since the car cannot be behind door number 3).
+
+Therefore, switching to door number 2 increases your chances of winning the car from 1/3 to 
+
+
+```{r}
+#2.
+# Function to simulate one game
+simulate_game <- function(){
+  # Sample the location of the car
+  car_door <- sample(c(1, 2, 3), 1)
+  
+  # Choose door 1
+  chosen_door <- 1
+  
+  # Host opens door 3, revealing a goat
+  open_door <- 3
+  if(open_door == car_door){
+    open_door <- sample(c(2, 3)[c(2, 3) != car_door], 1)
+  }
+  
+  # Switch or not switch
+  switch_door <- 2
+  if(chosen_door == car_door){
+    return(0)
+  }
+  else{
+    return(1)
+  }
+}
+
+# Run the simulation 10000 times
+results <- replicate(10000, simulate_game())
+
+# Calculate the probability of winning a car if you switch
+mean(results) 
+#Probability of winning a car = 0.6672
+
+
+```
+
+
+#Multiple Linear Regression:
+
+```{r}
+#part a
+#(a) Produce a scatterplot matrix which includes all of the variables in the
+#data set.
+library(ISLR)
+library(psych)
+library(tidyverse)
+
+#View(Auto)
+
+pairs(Auto)
+
+pairs.panels(Auto)
+
+
+#part b
+#Compute the matrix of correlations between the variables using the function cor(). 
+#You will need to exclude the name variable, which is qualitative.
+auto2<-Auto[,-9]
+View(auto2)
+cor(auto2)
+
+#part c
+#linear regression
+Y<-auto2$mpg
+auto_model<-lm(Y~auto2$cylinders + auto2$displacement + auto2$horsepower + auto2$weight +
+                 auto2$acceleration + auto2$year + auto2$origin)
+summary(auto_model)
+
+#sub parts
+#Is there a relationship between the predictors and the response?
+#There is definetly a relationship betweeb predictors and response as we can see that 4/7 
+#variables are significant(p value is less than alpha) so there is some significant 
+#replationship between these variables and mpg"
+
+
+#also R^2 value is 0.821 so that means all variables together explain 82.15% of 
+#mpg(response)
+
+#For every unit increase in year, there's 0.750773 increase in mpg"
+#For every unit increase in weight, there's 0.006474 decrease in mpg"
+#For every unit increase in horsepower, there's 0.016951 decrease in mpg"
+
+
+#Which predictors appear to have a statistically significant relationship to the response?
+#the variables whose p values are less than alpha are significant anf from the summary table
+#we can see that- displacement, weight, year and origin are significant variables"
+
+#######
+
+
+#What does the coefficient for the year variable suggest?
+#coefficient for the year variable suggest that with every 1 unit increase in year,
+#response(mpg) will increase by 0.750773"
+
+
+#part d
+{par(mfrow = c(2,2))
+plot(auto_model)}
+
+#residual vs fitted
+#The U-shaped pattern of the residual plot indicates non-linearity of the residuals, and suggests that the linear regression model may not be the appropriate model for the Autos data")
+
+#normal Q-Q plot
+#Interpreting the normal Q-Q plot involves looking for patterns or deviations from a straight line. 
+#The plotted points closely aligned with the straight line, this implies a symmetrical distribution of the residuals around the mean, but a bit of right skewness
+#Additionally, the significant deviation at the top of the line indicates presence of outliers in the residuals."
+
+#scale-location
+# The scale-location plot is used to assess the constant variance assumption (homoscedasticity) in the linear regression above.
+#The random dispersion around the regression line indicates constant variance of residuals, and hence absence of heteroscedasticity."
+
+#residuals vs leverage
+#The plot shows presence of outliers. Also, presence of high leverage value (14) ( greater than 0.04 observed from our data [ calculated using 2k/n, 
+#where k is the number of predictors and n is the number of observations]) 
+#and high residuals (4 - the value much larger than the other residuals) indicate that they have a large impact on the model fit.")
+
+
+
+#part e
+auto_model2<-lm(Y~auto2$cylinders + auto2$displacement + auto2$horsepower + auto2$weight +
+                 auto2$acceleration + auto2$year + auto2$origin + auto2$cylinders : auto2$displacement
+                +auto2$displacement * auto2$horsepower + auto2$horsepower * auto2$weight +
+                  auto2$acceleration * auto2$year + auto2$year * auto2$origin +
+                  auto2$cylinders : auto2$horsepower + auto2$displacement * auto2$weight+
+                  auto2$weight * auto2$acceleration
+                  )
+summary(auto_model2)
+
+# There are few significant interaction terms that we can see from the summary table
+# some signifiacnt interaction terms are auto2$cylinders:auto2$horsepower, 
+# auto2$acceleration:auto2$year , auto2$displacement:auto2$weight "
+
+
+#part f
+# (f) Transformation of variables
+
+fit_log_disp <- lm(mpg ~ log(displacement) + log(cylinders) + log(horsepower)
+                   + log(weight) + log(acceleration) + log(year), data = Auto)
+summary(fit_log_disp)
+
+#All predictors (except displacement) are significant at 0.05 sig. level, with log transformation
+
+#Test for linearity, homoscedasticity, and outliers' assumptions:
+{par(mfrow = c(2,2))
+  plot(fit_log_disp)}
+#No significant difference from the linear model
+
+
+
+fit_sqrt_disp <- lm(mpg ~ sqrt(displacement) + sqrt(cylinders) + sqrt(horsepower)
+                    + sqrt(weight) + sqrt(acceleration) + sqrt(year), data = Auto)
+summary(fit_sqrt_disp)
+#The predictors weight and year appear to be significant.
+
+#Test for linearity, homoscedasticity, and outliers' assumptions:
+{par(mfrow = c(2,2))
+  plot(fit_sqrt_disp)}
+#No significant difference from the linear model
+
+
+
+
+fit_square_disp <- lm(mpg ~ I(displacement^2) + I(cylinders^2) + I(horsepower^2) +
+                        I(weight^2) + I(acceleration^2) + I(year^2), data = Auto)
+summary(fit_square_disp)
+#All predictors (except horsepower) are aignificant at 0.05 sig. level with Squeare transformations.
+#Test for linearity, homoscedasticity, and outliers' assumptions:
+{par(mfrow = c(2,2))
+  plot(fit_square_disp)}
+#No significant difference from the linear model
+```
+

@@ -1,0 +1,490 @@
+---
+title: "Advanced Statistical Modelling"
+authors: "Ridwan_Abdusalam"
+date: "2023-01-23"
+output: pdf_document
+---
+
+```{r}
+```
+
+
+```{r}
+```
+
+## Data Exploration:
+(a) Download the data source from the Machine Learning Repository
+at http://archive.ics.uci.edu/ml/datasets/Credit+Approval
+(b) Convert the crx.data file to a CSV file.
+(c) Define a variable called source path. Assign to it the full path of
+the source file, which the data are to be read from (as saved in
+your local environment).
+
+```{r}
+
+#tinytex::install_tinytex()
+#(a) Download the data source from the Machine Learning Repository at http://archive.ics.uci.edu/ml/datasets/Credit+Approval
+# Data downloaded
+# read the crx.data file into a data frame
+
+# Load the httr package
+#install.packages("httr")
+library(httr)
+
+# Define the URL of the file to download (checking the web page show that the below url houses the needed data)
+url <- "https://archive.ics.uci.edu/ml/machine-learning-databases/credit-screening/crx.data"
+
+# Send a GET request to the URL
+response <- GET(url)
+
+# Get the response content
+content <- content(response)
+
+# Write the content to a file
+write(content, file = "crx_data")
+
+#source path
+source_path <- "/Users/ridhwaan/Documents/Winter/Professor Rahul Makhijani - Adv. Stats/Assignments/Assignment 1/"
+
+# read the crx.data file into a data frame
+#crx_data <- read.csv(file = file.path(source_path, "crx.data"), header = F, na.strings = "?")
+
+
+#(b)Convert the crx.data file to a CSV file.
+# specify the source and destination path
+destination_path <- "/Users/ridhwaan/Documents/Winter/Professor Rahul Makhijani - Adv. Stats/Assignments/Assignment 1/"
+
+# convert the data frame to a CSV file
+#write.csv(crx_data, file = paste0(destination_path, "crx_data_.csv"), row.names = F)
+
+
+#(c) Define a variable called source path. Assign to it the full path of the source file, which the data are to be read from (as saved in your local environment).
+source_path <- "/Users/ridhwaan/Documents/Winter/Professor Rahul Makhijani - Adv. Stats/Assignments/Assignment 1/data.csv"
+
+
+```
+
+#2. Load data into R, indexing and printing 
+
+```{r}
+#(a) read data.csv file and save it as data
+data <- read.csv("crx_data.csv")
+data
+
+#(b)Show first 10 observations of the csv data
+head(data, n = 10)
+
+#(c) class attribute = V16 (the class attribute), according to the meta data.
+target_variable <- data$V16
+target_variable
+```
+
+#3. . Data exploration
+
+
+```{r}
+#(a) Write a command that show features data type:
+# show the data types of the features
+str(data)
+
+# (b) Create a summary statistics; mean, standard deviation, variance, min, max, median, range, and quantile – for each feature in the data.
+# import necessary library
+library(psych)
+
+# create summary statistics for each feature
+describe(data)
+
+#(c) Categorical features Write a command that shows features unique (distinct) values.
+# show the unique values of each feature
+lapply(data, function(x) unique(x))
+
+#(d) Compute the “Skewness” measure of the target variable.
+# install e1071 package
+#install.packages("e1071")
+
+# load e1071 package
+library(e1071)
+
+# convert '+' to 1 and '-' to 0 in the target variable column
+data[,ncol(data)] <- ifelse(data[,ncol(data)] == "+", 1, 0)
+
+# assuming the target variable is the last column in the data frame
+target_variable <- data[,ncol(data)]
+
+# compute skewness of the target variable
+skewness_target_variable <-skewness(target_variable)
+skewness_target_variable #0.2211568  # Data is moderately skewed
+
+# Based on this value, can we apply a balanced classification technique?:
+#A skewness value of 0.2211568 is considered moderately skewed (because it's between -0.5 and +0.5),
+#It is not considered highly skewed, but it is not symmetric either. So, it could affect the performance of a classification model, if the data is used without any preprocessing. We can
+
+#(e) Compute the “Skewness” measure of the variable V1. What does it tell us about V1 variable?
+# variable V1
+v1 <- data$V1   #v1 contains character variables
+v1 <- ifelse(v1 == "a", 0, ifelse(v1 == "b", 1,NA))
+
+# compute skewness of variable v1
+skewness_v1 <-skewness(v1) # N/A
+#The skewness returns N/A. The concept of skewness does not go along with categorical variables because categorical variables do not have a natural order or a mean. Skewness is a measure of the asymmetry of a probability distribution about its mean. It is typically used for numerical variables.
+
+#However, we can check the proportion of each category:
+prop.table(table(v1)) # '-' have 30% while '+' have 70%
+
+#Visualizing the distribution of v1 using bar chart:
+library(ggplot2)
+ggplot(data = data, aes(x = v1)) + geom_bar(aes(y = ..prop..))
+
+
+
+# (f) Compute the “Kurtosis” measure of the variable V8. Is it from a Gaussian distribution?
+#Declaring V8:
+v8 <- data$V8
+
+# compute kurtosis of the variable
+kurtosis(v8)   # kurtosis = 11.06964
+#Is v8 from a Gaussian distribution? => No
+#A variable with kurtosis of 11.06964 is highly peaked and is not considered to be from a Gaussian distribution. 
+#A kurtosis value of 11.06964 is considered a high kurtosis value. A normal distribution has a kurtosis of 3. In general, if the kurtosis is greater than 3, the distribution is considered to be highly peaked (leptokurtic) and if it is less than 3, the distribution is considered to be less peaked (platykurtic) compared to a normal distribution.
+
+
+# (g) Assume V10 variable indicates if the person has a first degree
+#i. Compute the frequency table, marginal frequency and rowwise proportions of V10 and the target variable.
+#ii. Based on these results, what will be the accuracy of a classifier
+#that always predicts “repaid” for all undergraduates?
+V10 = data$V10
+has_degree <- ifelse(V10 == "f", 0, ifelse(V10 == "t", 1,NA))  #1="t" -> true; 0="f" -> false
+
+#i.Compute the frequency table, marginal frequency and rowwise proportions of V10 and the target variable.
+
+# assuming the target variable is the last column in the data frame
+target_variable <- data[, ncol(data)]
+
+# compute frequency table
+ftable <- table(has_degree, target_variable)
+ftable
+
+# compute marginal frequency
+marginal_frequency <- prop.table(ftable, margin = 1)
+marginal_frequency
+
+# compute rowwise proportions
+rowwise_proportions <- prop.table(ftable, margin = 2)
+rowwise_proportions
+
+
+# ii. Based on these results, what will be the accuracy of a classifier that always predicts “repaid” for all undergraduates?
+
+# assuming the target variable is "repaid" and "not_repaid"
+# assuming the variable V10 is "undergrad" and "not_undergrad"
+
+# compute the total number of undergraduates
+total_undergrad <- sum(ftable[1,])
+total_undergrad # total undergrad = 395
+
+# compute the number of correctly classified undergraduates
+correctly_classified_undergrad <- ftable[1,1]
+correctly_classified_undergrad # correctly classified = 297
+
+# accuracy of the classifier
+accuracy <- correctly_classified_undergrad/total_undergrad
+accuracy  # Accuracy = 75.18%
+
+
+```
+
+
+#4. Missing values
+
+```{r}
+
+# (a) Write a command that finds all missing values
+# Find missing values in the data
+missing_values <- which(is.na(data), arr.ind = TRUE)
+missing_values
+
+#Show the count per variable
+missing_values_count <- colSums(is.na(data))
+missing_values_count
+
+# (b) Categorical variables – replace all missing values for a variable with the most frequent value
+#Relpacing missing values for categorical variables:
+for (col in names(data)){
+    if(is.character(data[,col])){
+        data_freq = table(data[,col])
+        highest_freq = names(data_freq)[which.max(data_freq)]
+        data[is.na(data[,col]), col] <- highest_freq
+    }
+}
+
+#Relpacing missing values for numeric variables:
+for (col in names(data)){
+    if(is.numeric(data[,col])){
+        data_freq = table(data[,col])
+        highest_freq = names(data_freq)[which.max(data_freq)]
+        data[is.na(data[,col]), col] <- highest_freq
+    }
+}
+
+#Proof check for presence of missing values:
+missing_values_count2 <- colSums(is.na(data))
+print(missing_values_count2)
+
+#The above code loops through each column in the dataframe using the names() function.
+#It uses the is.character() function to check if the column is of type character.
+#Then, it creates a frequency table of the values in that column using table() function and finds the highest frequency value using which.max() and names() functions.
+#It then uses the is.na() function to find the missing values in that column and replaces them with the highest frequency value using the assignment operator <-.
+
+
+
+```
+
+
+#5. Data normalizations and transformations
+```{r}
+#(a) Replace the target attribute to a binary attribute (logical datatype).
+# assuming the target variable is the last column in the data frame
+
+# replace target variable to binary variable
+data[,"V16"] <- as.logical(data[,"V16"])
+data$V16
+
+
+#(b) Discretization - discretize variable V2 using the equal frequencies or equal width binning algorithm.
+# Discretize variable V2 using equal width
+data$V2_ew <- cut(as.numeric(data$V2), breaks = nclass.Sturges(data$V2), include.lowest = TRUE)
+data$V2_ew
+
+#I used  the cut() function to discretize variable "V2" into bins with equal width. The nclass.Sturges() function is used to calculate the cutpoints, it takes the variable as an argument and returns the optimal number of bins according to the Sturges' rule. The include.lowest = TRUE argument tells R to include the lowest value in the first interval. The resulting column "V2_ew" will be a factor with levels that correspond to the intervals in which the variable V2 falls.
+
+
+
+#(c) Scaling - after examining the range and distribution of each feature (explain how you did that), apply on each numerical feature a relevant scaling. Use at least 2 different scaling methods and explain why each method was chosen.
+
+
+# Examine the range of each feature
+ranges <- apply(data, 2, range)
+ranges
+#The apply() function with the range function as the second argument, to calculate the range of each feature in the data frame, and the resulting "ranges" variable will be a matrix containing the minimum and maximum value of each feature.
+
+
+# Exclude non-numeric columns from data frame
+data_numeric <- data[, sapply(data, is.numeric)]
+
+# Examine the distribution of each numeric features
+par(mfrow = c(3,3))
+for (col in 1:ncol(data_numeric)){
+    hist(data_numeric[,col], main = colnames(data_numeric)[col], xlab = "Values", ylab = "Frequency")
+}
+#All numeric data are right-skewed:
+#The par() function to set the layout of the plots to 3 rows by 3 columns, then it uses a for-loop to iterate through the columns of the data frame, and for each column, it plots a histogram of the values using the hist() function, the main title of the plot will be the name of the column (using colnames(data)[col]) and the x-axis and y-axis labels are set to "Values" and "Frequency" respectively.
+
+# Examine the distribution of each non-numeric features
+# Exclude numeric columns from data frame
+data_non_numeric <- data[, sapply(data, function(x) !is.numeric(x))]
+
+# Examine the distribution of each non-numeric feature
+par(mfrow = c(3,3))
+for (col in 1:ncol(data_non_numeric)){
+    barplot(table(data_non_numeric[,col]), main = colnames(data_non_numeric)[col], xlab = "Values", ylab = "Frequency")
+}
+#I used  the sapply() function with a custom function that checks if each column is not numeric, and it returns a logical vector. Then it uses the logical vector to subset the data frame and keep only the non-numeric columns.
+#Then it uses the par() function to set the layout of the plots to 3 rows by 3 columns, then it uses a for-loop to iterate through the columns of the data frame, and for each column, it plots a bar plot of the values using the barplot() function and table() function, the main title of the plot will be the name of the column (using colnames(data_non_numeric)[col]) and the x-axis and y-axis labels are set to "Values" and "Frequency" respectively.
+
+
+
+
+# Apply on each numerical feature a relevant scaling. Use at least 2 different scaling methods and explain why each method was chosen:
+
+#Method 1: Standardization
+data_std <- as.data.frame(lapply(data[,sapply(data, is.numeric)], function(x) (x - mean(x))/sd(x)))
+data_std
+
+# I used the lapply() function with a custom function that applies the Standardization method to each numerical feature. Standardization scales the data so that it has a mean of 0 and a standard deviation of 1. This scaling method is useful when the data doesn't have outliers and the data needs to be transformed to a specific distribution.
+
+
+# Method 2: Min-Max scaling
+data_min_max <- as.data.frame(lapply(data[,sapply(data, is.numeric)], function(x) (x - min(x))/(max(x) - min(x))))
+data_min_max
+# I used the lapply() function with a custom function that applies the Min-Max scaling method to each numerical feature. Min-Max scaling scales the data to the range of [0,1] by subtracting the minimum value of each feature from the feature's values and dividing the result by the range of the feature (max - min). This scaling method is useful when the data has outliers and the data needs to be transformed to a specific range.
+
+#I prefer method 2 because it caters for outliers in data, and the data contains some outliers
+
+
+```
+
+
+# 6. Outliers and Visualization
+
+```{r}
+# (a) Create a boxplot of the target variable by V3:
+
+# Create a boxplot of the target variable (V3) by the target_variable
+boxplot(V3 ~ target_variable, data = data, xlab = "Target Variable", ylab = "V3")
+# I used the boxplot() function to create a boxplot of the target variable (V3) by the target variable. The boxplot() function takes the y-variable "V3" and the x-variable "target_variable" as arguments and the data frame "data" as the data. The x-axis label is set to "Target Variable" and the y-axis label is set to "V3".
+
+
+# 6i. What can be inferred about V3 by this graphical presentation?:
+#(Making reference to s 3(g) above, I'm assuming the target variable is "repaid"=1 and "not_repaid"=0)
+
+#INTERPRETATIONS
+#1. Outliers:
+#Presence of data points outside the upper whiskers revealed the presence of outliers in both repaid (1) and not_repaid (0) categories.
+
+#2. Within group variability (using whisker length):
+# The long upper whisker in means that V3 varied widely amongst upper quartile group, and very similar for the lower  quartile group.
+
+
+#3. Skewness:
+#The position of the median (middle line of the box) indicates that both categories are positively-skewed (right-skewed)
+
+#4. Inter-quartile-range:
+# Comparing the box heights, Category 1 (repaid) shows more dispersion within the group compared to category 0 (not_repaid)
+
+#6ii:
+# Find the outliers using Z-Score method
+outliers <- which(abs(scale(data[, "V3"])) > 3)
+outliers
+#(b) Select 2 numerical features to plot against each other and add a regression line, and explain the plot:
+# Scatter plot of V2 and V3 with regression line
+library(ggplot2)
+ggplot(data, aes(x = V3, y = V8)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE)
+
+#The slope of the regression line represents the rate of change of V8 with respect to V3, because the slope is positive (above 0 on +y axis), it means that as V3 increases, V8 increases as well.
+#Also, the closer the points are to the line, the stronger the correlation between the two variables, which means that the values of the two variables are closely related. The further the points are from the line, the weaker the correlation between the two variables, which means that the values of the two variables are not closely related.
+
+#This code uses the ggplot() function to create a scatter plot of the V3 and V15 columns in the dataframe. The aes() function is used to specify which columns should be used for the x and y axis.
+#The geom_point() function is used to add the scatter points to the plot, and the geom_smooth() function is used to add a linear regression line.
+#The method parameter is set to "lm" for linear model and se parameter is set to FALSE to remove the confidence intervals of the regression line
+
+
+#(c) Plot the density of V2:
+# Density plot of V2
+ggplot(data, aes(x = as.numeric(V2))) + 
+  geom_density()
+
+
+```
+
+
+#7. Correlation analysis (Redundant or non-informative features)
+
+```{r}
+# (a) Correlation test (Pearson) - calculate the “degree of association” between V3 and V15.
+# Pearson correlation coefficient
+pearson_cor <- cor(data$V3, data$V15, method = "pearson")
+pearson_cor # 0.1231212
+
+#(b) Plot the correlation matrix of all variables. Which variables are redundant? Explain.
+# Correlation matrix plot
+#install.packages("corrplot")
+library(corrplot)
+
+#Correlation matrix (for numerical data)
+data_numeric <- data[, sapply(data, is.numeric)]
+corr_matrix <- cor(data_numeric)
+corrplot(corr_matrix, method = "color")
+
+#Using the widely known standard, I'm setting the threshold to 0.8. Any feature with correlation > 0.8 = redundant variable.
+# Set threshold value
+threshold <- 0.8
+corrplot(corr_matrix, method = "number", type = "upper", tl.col = "black", tl.srt = 60, threshold = threshold)
+
+ # No correlation coefficient falls within the specified threshold. Therefore, no feature to be removed.
+
+
+
+#7(c) 
+#1. #Remove one of the pair of correlated features:
+#We can improve the performance of our algorithm by reducing the degree of multicollinearity, which can lead to overfitting and unstable estimates of the model parameters.
+
+
+#2. Combine correlated features: 
+#We can use techniques such as principal component analysis (PCA) to combine correlated features into a single feature that captures the most important information.
+
+#3. Regularization:
+#We can also use regularization techniques such as L1 or L2 regularization to reduce the impact of correlated features on the model.
+
+#4. Selecting the best feature: 
+#We can also use feature selection techniques such as mutual information, correlation-based feature selection (CFS), or Recursive Feature Elimination (RFE) to identify the most informative features and remove the redundant features.
+
+
+```
+
+
+
+
+```{r}
+
+
+```
+
+
+#Simple Linear Regression Analysis
+```{r}
+#install.packages('ISLR')
+
+library(ISLR)
+
+#View(Auto)
+X<-Auto$horsepower
+Y<-Auto$mpg
+l_m<-lm(Y~X)
+summary(l_m)
+
+library(ggplot2)
+ggplot(Auto, aes(x = X, y = Y)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE)
+
+#Is there a relationship between the predictor and the response? 
+sprintf("Looking at the overall F-test, with p-value < 2.2e-16 (highly signifiacnt) we can confirm that there's a relationship between predictor (mpg) and response variable(horsepower).")
+
+sprintf("There's a strong relationship between predictor (mpg) and response variable (horsepower) he adjusted R-squared value indicates that 0.6049 of the variation in response variable (mpg) is explained by the model.")
+
+#Is the relationship between the predictor and the response positive or negative?
+sprintf("The negative coefficent sign of predictor var (X), and the downward trend of the graph indicate that the relationship between Y and X is negative")
+```
+
+
+#Plot the response and the predictor. Use the abline() function to display the least squares regression line.
+
+```{r}
+#Plot the response and the predictor. Use the abline() function to display
+#the least squares regression line.
+
+#plotting response(mpg) and predictor (horsepower) 
+{attach(Auto)
+plot(horsepower,mpg)
+#plotting least square regression line
+abline(l_m, lwd=5,col="red")}
+```
+
+#Use the plot() function to produce diagnostic plots of the least squares residuals. Comment on any problems you see with the fit.
+
+```{r}
+#residual fit plot
+{par(mfrow = c(2,2))
+plot(l_m)}
+
+sprintf("The first graph shows that there is a non-linear relationship between the residuals and the fitted values; The second graph shows that the residuals are normally distributed and right skewed; The third graph shows that the constant variance of error assumption is not true for this model; The fourth graphs shows that there are no leverage points. However, there on observation that stands out as a potential leverage point ")
+
+```
+
+# What is the predicted mpg associated with a horsepower of 98%? What are the associated 95 % confidence and prediction intervals?
+
+```{r}
+
+# Using the linear model object l_m from above:
+mpg_predicted <- predict(l_m, newdata = data.frame(horsepower = 98))
+mpg_predicted
+# for the 95% confidence interval
+conf <- predict(l_m, newdata = data.frame(horsepower = 98), interval = "confidence")
+conf
+# for the 95% prediction interval
+pred <- predict(l_m, newdata = data.frame(horsepower = 98), interval = "prediction")
+pred
+
+```
