@@ -1,0 +1,360 @@
+---
+title: "Advanced Project"
+author: "Ridwan_Abdusalam"
+date: "2023-02-12"
+output: pdf_document
+---
+
+```{r}
+```
+
+## Linear Regression Output
+
+```{r}
+#Part 1:
+
+wk2 <- function(wk1, T) {
+  18.47174 + 0.81866 * wk1 + -0.84577 * T
+}
+
+wk1 <- 95
+T <- 1
+s <- 7.311
+wk2(wk1, T) + c(-1, 1) * qt(0.975, 97) * s * sqrt(1+1/97)
+# [1]  80.81376 109.98358
+
+
+#Part 2:
+0.81866 + c(-1, 1) * qt(0.975, 97) * 0.06943
+# [1] 0.6808607 0.9564593
+
+
+#Part 3:
+# The test rejects the null of beta1 = 0 because the p-value is small enough
+# to reject it with less than 1% significance level.
+
+
+#Part 4:
+-0.84577 + c(-1, 1) * qt(0.975, 97) * 1.47809
+# [1] -3.779369  2.087829
+
+
+#Part 5:
+# The test fails to reject the null of beta2 = 0 because the p-value is large, 0.59.
+# It should be smaller than 0.05 at least.
+
+
+#Part 6:
+t <- abs((0.81866-1)/0.06943)
+2 * pt(t, 97, lower.tail = FALSE)
+# [1] 0.0104366
+# The p-value is multiplied by 2 because it is a 2-sided hypothesis testing.
+# The p-value is smaller than 0.05, so we can reject the null at 5% significance
+# level, but cannot reject it at 1% significance level.
+
+
+#Part 7:
+# Because the training dummy is not statistically significant, the manager's
+# interpretation is wrong to infer that training has any effect, even. But also,
+# the specification of regression model is likely wrong in trying to explain wk2
+# with wk1 as well as T. It makes sense to include T
+
+
+
+```
+
+## Case Study
+```{r}
+#load the library
+library(faraway)
+
+#load the data:
+data(happy, package='faraway')
+
+# Check for missing values:
+sum(is.na(happy))
+# No missing value found
+
+# Check the structure of the data:
+str(happy)
+#Data contains 39 observations of  5 variables (Money, Sex, Love, and Work)
+#Money and Happiness are numeric, Sex is binary (categorical), Love and Work are categorical
+
+# Check the summary statistics of the data:
+summary(happy)
+#Happy:
+# Min value = 2; Max value = 8, Mean = 6.744, and Median = 7.0
+#Money:
+# Min value = 0; Max value = 175, Mean = 62.15, and Median = 50.0
+#Sex (binary):
+# Min value = 0; Max value = 1, Mean = 0.6923, and Median = 1
+#Love:
+# Min value = 1; Max value = 3, Mean = 2.462, and Median = 3.0
+
+# Plot frequency distributions to understand the distribution of the data and identify skewness.
+par(mfrow=c(2,2))
+hist(happy$money, main="Frequency Distribution of Money", xlab="Money", ylab="Frequency")
+hist(happy$sex, main="Frequency Distribution of Sex", xlab="Sex", ylab="Frequency")
+hist(happy$love, main="Frequency Distribution of Love", xlab="Love", ylab="Frequency")
+hist(happy$work, main="Frequency Distribution of Work", xlab="Work", ylab="Frequency")
+
+
+#Adding density plots to establish shape of the curve:
+happy <- happy[sapply(happy, is.numeric)]
+for (col in names(happy)) {
+  hist(happy[[col]], probability = TRUE, col = "gray", border = "white")
+  xfit<-seq(min(happy[[col]]), max(happy[[col]]), length=40)
+  yfit<-dnorm(xfit, mean=mean(happy[[col]]), sd=sd(happy[[col]]))
+  lines(xfit, yfit, col="red", lwd=2)
+}
+
+#Distribution of money is slightly right skewed.
+
+# Plot box plot to understand the distribution of the data and identify any outliers.
+par(mfrow=c(2,2))
+boxplot(happy$money, main="Box Plot of Money", xlab="Money")
+boxplot(happy$sex, main="Box Plot of Sex", xlab="Sex")
+boxplot(happy$love, main="Box Plot of Love", xlab="Love")
+boxplot(happy$work, main="Box Plot of Work", xlab="Work")
+
+#There's presence of outliers in Money and Work.
+
+# Making corrections for outliers:
+# Function to replace outliers with the median
+replace_outliers <- function(x) {
+  q1 <- quantile(x, 0.25)
+  q3 <- quantile(x, 0.75)
+  iqr <- q3 - q1
+  lower_bound <- q1 - 1.5 * iqr
+  upper_bound <- q3 + 1.5 * iqr
+  x[x < lower_bound] <- mean(x, na.rm=TRUE)
+  x[x > upper_bound] <- mean(x, na.rm=TRUE)
+  return(x)
+}
+# (I chose the mean to replace the outliers in this case because I'm assuming the values are genuine and it's possible in real life to have 4% extremely wealthy folks. And also because the variable 'money' is normally distributed )
+
+# Replace outliers with mean in each variable
+happy$money <- replace_outliers(happy$money)
+happy$work <- replace_outliers(happy$work)
+
+#Check:
+# Plot box plot to understand the distribution of the data and identify any outliers.
+par(mfrow=c(2,2))
+boxplot(happy$money, main="Box Plot of Money", xlab="Money")
+boxplot(happy$work, main="Box Plot of Work", xlab="Work")
+#Outliers have been corrected
+
+# Create scatter plots to visualize the relationship between happiness and the predictors (Money, Sex, Love, and Work):
+par(mfrow=c(2,2))
+plot(happy$money, happy$happiness, main="Happiness vs Money", xlab="Money", ylab="Happiness")
+plot(happy$sex, happy$happiness, main="Happiness vs Sex", xlab="Sex", ylab="Happiness")
+plot(happy$love, happy$happiness, main="Happiness vs Love", xlab="Love", ylab="Happiness")
+plot(happy$work, happy$happiness, main="Happiness vs Work", xlab="Work", ylab="Happiness")
+
+# No clear pattern noticed between Money and happiness.
+# Other variables are clearly categorical.
+
+library(dplyr)
+data(happy, package='faraway')
+pairs(~ happy + money + sex + love + work, data=happy)
+
+# I am looking at the scatter plot between all the predictors and target.
+# The variables are predictably explaining happiness such as more love is
+# associated with higher happiness, etc.
+
+
+#Modelling the relationship with multiple linear regression:
+# First, I run a standard mulitvariate regression using four variables, and
+# call it 'base model':
+
+base_model <- lm(happy ~ money + sex + love + work, data = happy)
+summary(base_model)
+
+# Call:
+#lm(formula = happy ~ money + sex + love + work, data = happy)
+ 
+# Residuals:
+#     Min      1Q  Median      3Q     Max 
+# -2.7186 -0.5779 -0.1172  0.6340  2.0651 
+# 
+# Coefficients:
+#              Estimate Std. Error t value Pr(>|t|)    
+# (Intercept) -0.072081   0.852543  -0.085   0.9331    
+# money        0.009578   0.005213   1.837   0.0749 .  
+# sex         -0.149008   0.418525  -0.356   0.7240    
+# love         1.919279   0.295451   6.496 1.97e-07 ***
+# work         0.476079   0.199389   2.388   0.0227 *  
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 1.058 on 34 degrees of freedom
+# Multiple R-squared:  0.7102,	Adjusted R-squared:  0.6761 
+# F-statistic: 20.83 on 4 and 34 DF,  p-value: 9.364e-09
+
+# It appears that:
+# 1. Money, love and work are statistically significant at 0.1 significance level. 
+#    (Using 0.1 sig.level since it's not a high risk problem)
+# 2. For every unit increase in Money, there's 0.009578 increase in Happiness
+# 3. For every unit love experienced, there's 1.919279 increase in Happiness
+# 4. For every unit increase in work, there's  0.476079 increase in Happiness
+# 5. The estimated effect of sex is unexpectedly negative, but it is not statistically
+
+# Here, in order to investigate a few possibilities that money, love and work
+# may have a different impact on happy depending on the sexual satisfaction.
+# Maybe love and sexual satisfaction may have a bigger impact on happiness when
+# both are doing great.
+
+interactions_with_sex <- lm(happy ~ money + sex + love + work + money:sex + love:sex + work:sex,
+          data = happy)
+summary(interactions_with_sex)
+
+# Call:
+#   lm(formula = happy ~ money + sex + love + work + money:sex + 
+#        love:sex + work:sex, data = happy)
+# 
+# Residuals:
+#      Min       1Q   Median       3Q      Max 
+# -1.57269 -0.68593 -0.07372  0.53131  2.43429 
+# 
+# Coefficients:
+#             Estimate Std. Error t value Pr(>|t|)  
+# (Intercept) -1.42738    1.60028  -0.892   0.3793  
+# money        0.03671    0.01721   2.133   0.0409 *
+# sex          1.65202    1.83275   0.901   0.3743  
+# love         1.71472    0.91418   1.876   0.0701 .
+# work         0.63187    0.54148   1.167   0.2521  
+# money:sex   -0.03040    0.01803  -1.686   0.1018  
+# sex:love     0.25437    0.96506   0.264   0.7938  
+# sex:work    -0.26468    0.58434  -0.453   0.6537  
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 1.036 on 31 degrees of freedom
+# Multiple R-squared:  0.747,	Adjusted R-squared:  0.6898 
+# F-statistic: 13.07 on 7 and 31 DF,  p-value: 1.058e-07
+
+# It appears that:
+# 1. Money and love are statistically significant at 0.1 significance level. 
+# 2. For every unit increase in Money, there's 0.03671 increase in Happiness
+# 3. For every unit love experienced, there's 1.71472 increase in Happiness
+# None of the interaction terms are statistically significant.
+
+# But the R-squared and the adjusted R-squared increased to 0.747 and 0.6898
+# from 0.7102 and 0.6761 respectively.
+
+
+# To check maybe love interact with other variables. Without love, everything is moot.
+interaction_with_love <- lm(happy ~ money + sex + love + work + money:love + sex:love + work:love,
+          data = happy)
+summary(interaction_with_love)
+# Call:
+#   lm(formula = happy ~ money + sex + love + work + money:love + 
+#        love:sex + work:love, data = happy)
+# 
+# Residuals:
+#      Min       1Q   Median       3Q      Max 
+# -1.65281 -0.49697 -0.05389  0.57675  1.75782 
+# 
+# Coefficients:
+#              Estimate Std. Error t value Pr(>|t|)    
+# (Intercept) -9.722684   3.161851  -3.075 0.004369 ** 
+# money        0.115821   0.027260   4.249 0.000182 ***
+# sex         -1.044638   1.693792  -0.617 0.541906    
+# love         5.662392   1.320767   4.287 0.000163 ***
+# work         1.680061   0.575868   2.917 0.006512 ** 
+# money:love  -0.038075   0.009738  -3.910 0.000469 ***
+# sex:love     0.264706   0.702981   0.377 0.709074    
+# love:work   -0.483334   0.238477  -2.027 0.051363 .  
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 0.8978 on 31 degrees of freedom
+# Multiple R-squared:  0.8099,	Adjusted R-squared:  0.7669 
+# F-statistic: 18.86 on 7 and 31 DF,  p-value: 1.518e-09
+
+# The R-squared and the adjusted R-squared increased a lot higher over the 
+# previous model with the same number of predictors, 7.
+
+# The interaction terms between love and (money, work) are statistically significant
+# at 10% significance level, but mysteriously the estimated coefficients are both negative. 
+# It means that if relationship between both love and money or love and work are good, 
+# somehow an students tends to be less happier.
+
+# Holding other conditions constant:
+# If there's an interaction between love and  money, happiness reduces by 0.038075
+# If there's an interaction between love and  work, happiness reduces by 0.483334
+
+
+# To check maybe money interact with other variables. Without love, everything is moot.
+interaction_with_money <- lm(happy ~ money + sex + love + work + money:love + money:sex + money:work,
+          data = happy)
+summary(interaction_with_money)
+
+
+# Call:
+# lm(formula = happy ~ money + sex + love + work + money:love + 
+#    money:sex + money:work, data = happy)
+
+# Residuals:
+#     Min      1Q  Median      3Q     Max 
+# -1.4485 -0.6295 -0.1251  0.4933  1.8449 
+
+# Coefficients:
+#             Estimate Std. Error t value Pr(>|t|)    
+# (Intercept) -4.650342   1.800350  -2.583  0.01474 *  
+# money        0.085003   0.025398   3.347  0.00215 ** 
+# sex          0.407269   0.914001   0.446  0.65899    
+# love         3.901821   0.842921   4.629  6.2e-05 ***
+# work         0.119129   0.418461   0.285  0.77778    
+# money:love  -0.030916   0.012884  -2.400  0.02261 *  
+# money:sex   -0.014246   0.017240  -0.826  0.41494    
+# money:work   0.006266   0.006626   0.946  0.35165    
+
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+# Residual standard error: 0.9501 on 31 degrees of freedom
+# Multiple R-squared:  0.7871,	Adjusted R-squared:  0.739 
+# F-statistic: 16.37 on 7 and 31 DF,  p-value: 8.202e-09
+
+# Holding other conditions constant:
+# It turns out money and love are significant. But, just about 78% of the variations in happyness
+# is explained by the model. 
+# The model with interactions with love explained the model much better.
+
+#Checking for OLS assumptions for the best model:
+
+
+# Check for linearity
+par(mfrow = c(2, 2))
+plot(interaction_with_love, which = 1)
+plot(interaction_with_love, which = 2)
+
+# Check for independence
+plot(resid(interaction_with_love) ~ fitted(interaction_with_love))
+abline(h = 0)
+
+# Check for homoscedasticity
+plot(resid(interaction_with_love) ~ happy$love)
+abline(h = 0)
+
+# Check for normality
+hist(resid(interaction_with_love))
+qqnorm(resid(interaction_with_love))
+qqline(resid(interaction_with_love))
+
+# Check for multicollinearity
+vif(interaction_with_love)
+
+# Check for autocorrelation
+acf(resid(interaction_with_love))
+
+
+
+
+
+
+```
+
+```{r}
+
+```

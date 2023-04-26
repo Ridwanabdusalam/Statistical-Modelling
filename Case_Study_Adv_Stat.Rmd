@@ -1,0 +1,114 @@
+---
+title: "Case_Study"
+author: "Ridwan"
+date: "2023-02-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+# 1. What metric will you optimize the classifier for ?
+
+# I'll optimize for the  F1 score. 
+
+# F1 score  harmonic mean of precision and recall.
+
+# F1 score = 2 x [(Precision x Recall) / (Precision + Recall)].
+
+# Precision: The fraction of true positives among all predicted positives
+# Precision = TruePositives / (TruePositives + FalsePositives)
+
+# Recall: the fraction of true positives among all actual positives
+# Recall = Recall = TruePositives / (TruePositives + FalseNegatives)
+
+```
+
+## Including Plots
+```{r}
+#  2:
+
+# load Rose library to handle imbalanced data set
+#install.packages('ROSE')
+library(ROSE)
+
+# load the creditcard dataset
+creditcard <- read.csv("creditcard.csv")
+
+#Convert class to factor variable
+creditcard$Class <- as.factor(creditcard$Class)
+
+# downsample majority class to create an imbalanced dataset
+creditcard_downsampled <- downSample(x = creditcard[, -31], 
+                                     y = creditcard$Class, 
+                                     yname = "Class")
+
+set.seed(123)
+creditcard_downsampled <- creditcard_downsampled[sample(nrow(creditcard_downsampled), 10000, replace = TRUE), ]
+
+
+# split the data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(creditcard_downsampled$Class, p = 0.8, list = FALSE)
+trainData <- creditcard_downsampled[trainIndex, ]
+testData <- creditcard_downsampled[-trainIndex, ]
+
+# train the model using logistic regression
+model <- train(Class ~ ., data = trainData, method = "glm", family = "binomial")
+
+# predict the test data using the trained model
+pred <- predict(model, testData)
+
+# convert factor to numeric
+pred_numeric <- as.numeric(pred)
+
+# Convert factor variable to numeric
+testData$Class <- as.numeric(as.character(testData$Class))
+
+# Rescale pred_numeric to be between 0 and 1
+pred_rescaled <- (pred_numeric - min(pred_numeric)) / (max(pred_numeric) - min(pred_numeric))
+
+
+# Convert both vectors to factors with the same levels
+testData$Class <- factor(testData$Class, levels = c("0", "1"))
+pred_rescaled <- factor(ifelse(pred_rescaled > 0.5, "1", "0"), levels = c("0", "1"))
+
+# Create a confusion matrix with default threshold
+confusionMatrix(table(testData$Class, pred_rescaled))
+
+
+```
+
+
+```{r}
+
+
+# The raw probabilities from the classifier can be used to predict the probability of fraud by setting a threshold probability above which a transaction is classified as fraudulent. Therefore, the raw probabilities from the classifier can be used to predict the probability of fraud.
+
+# I'd predict the probabilities from the classifier as follows:
+
+# Fit the classifier on the training data
+classifier <- glm(Class ~ ., data = trainData, family = "binomial")
+
+# Predict probabilities for the test data
+probabilities <- predict(classifier, newdata = testData, type = "response")
+
+
+
+
+
+
+
+```
+
+## R Markdown
+
+```{r}
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
