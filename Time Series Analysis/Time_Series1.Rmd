@@ -1,0 +1,118 @@
+---
+title: "Time series 1"
+authors: "Ridwan"
+date: "2023-01-27"
+output: html_document
+---
+
+```{r}
+```
+
+The USgas package contains data on the demand for natural gas in the US.
+
+Install the USgas package.        
+Create a tsibble from us_total with year as the index and state as the key.       
+Plot the annual natural gas consumption by state for the New England area (comprising the states of Maine, Vermont, New Hampshire, Massachusetts, Connecticut and Rhode Island).       
+
+```{r}
+#install.packages('fpp3')
+#install.packages('tidyverts')
+#install.packages('tsibble')
+#install.packages('USgas')
+#install.packages('tsibbledata')
+#install.packages('forecast')
+#noinstall.packages('ggfortify')
+#install.packages('feasts')
+
+library(tsibble)
+library(USgas)
+library(ggplot2)
+library(dplyr)
+library(tsibbledata)
+library(forecast)
+library(ggfortify)
+library(feasts)
+
+#Loading 
+us_total_tsibble <- us_total %>%
+  as_tsibble(index = year, key = state)
+
+us_total_tsibble %>%
+  filter(state %in% c("Maine", "Vermont", "New Hampshire", "Massachusetts", "Connecticut", "Rhode Island")) %>%
+  ggplot(aes(x = year, y = y, color = state)) +
+  geom_line()
+
+```
+
+1.Consider the last five years of the Gas data from aus_production.   
+gas <- tail(aus_production, 5*4) %>% select(Gas)        
+2.Plot the time series. Can you identify seasonal fluctuations and/or a trend-cycle?    
+3.Use classical_decomposition with type=multiplicative to calculate the trend-cycle and seasonal indices.   
+4.Do the results support the graphical interpretation from part a?    
+5.Compute and plot the seasonally adjusted data.    
+```{r}
+
+#1
+gas <- tail(aus_production, 5*4) %>% select(Gas)
+
+#2
+autoplot(gas)
+
+print('According to the plot, there is seasonal fluctuations and a trend cycle. The gas assumption of Q1 ane Q4 is obviously lower than Q2 and Q3 for each year. Moreover the total assumption increases from year to year.')
+
+#3
+data_tsibble <- gas %>% as_tsibble(index =Quarter , key =Gas )
+
+gas%>%
+model(
+classical_decomposition(Gas,type ="multiplicative")
+)%>%
+components()%>%
+autoplot()+
+labs(title = "Classical additive decomposition of total US retail employment")
+
+#4
+model <-decompose(as.ts(gas),type = "multiplicative")
+#seasonal
+model$seasonal
+#trend
+model$trend
+print('The result aligned with graphical representations from part a. The trend assumption goes up over years, but seasonality is maintained. The assumption of Q1 and Q4 is lower than 1 and Q2 and Q3 are more than 1.')
+
+
+#5
+seasonally_adjusted_gas <-model$x * model$seasonal # because it is multiplicative
+autoplot(seasonally_adjusted_gas)
+
+```
+6.Change one observation to be an outlier (e.g., add 300 to one observation), and recompute the seasonally adjusted data. What is the effect of the outlier?   
+7.Does it make any difference if the outlier is near the end rather than in the middle of the time series?   
+```{r}
+#6
+gas_e <- gas
+gas_e[8,1] <- gas[8,1] + 300
+
+model_e <- decompose(as.ts(gas_e),type = "multiplicative")
+trend_e <- model_e$trend
+seasonal_e <- model_e$seasonal
+
+seasonally_adjusted_e <- trend_e * seasonal_e
+autoplot(seasonally_adjusted_e)
+
+print('The trend pattern changed significantly but the seasonal pattern remains the same.')
+```
+
+```{r}
+#7
+gas_e <- gas
+gas_e[19,1] <- gas[19,1] + 300
+
+model_e <- decompose(as.ts(gas_e),type = "multiplicative")
+trend_e <- model_e$trend
+seasonal_e <- model_e$seasonal
+
+seasonally_adjusted_e <- trend_e * seasonal_e
+autoplot(seasonally_adjusted_e)
+
+print('The outlier near the end does not affect the trend and seasonl pattern as much as ourlier in the middle. We can still recognize the general trend that assumptions increasing with years and in some specific quarters the assumptions increase or decrease.')
+```
