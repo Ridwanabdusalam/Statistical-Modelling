@@ -1,0 +1,313 @@
+---
+title: "Advanced Modelling"
+author: "Ridwan"
+date: "2023-02-28"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+$${\textbf{Challenge 1}}$$
+
+Let $X = (x_1, x_2, \dots, x_n)$ be a set of centered unit vectors, where each $x_i$ is a $p$-dimensional vector with zero mean. We want to find the unit vector $u$ that minimizes the squared distance between the projection of $X$ along $u$ and the vector $x$. This is equivalent to finding the direction along which the variance of the projected data is maximized.
+
+Let $X_p$ be the projection of $X$ onto $u$, i.e., $X_p = (x_1 u, x_2 u, \dots, x_n u)$. Then, the squared distance between $X$ and $X_p$ is given by:
+
+$$||X-X_p||^2 = ||X||^2 - ||X_p||^2$$
+ 
+where $||X||^2$ is the sum of squared lengths of the vectors in $X$. Since the vectors in $X$ are centered, we have $||X||^2 = n$. Moreover, since $u$ is a unit vector, we have $||X_p||^2 = \sum_i (x_i u)^2 = \sum_i x_i^2 u^2 = u^T Su$, where $S$ is the sample covariance matrix of $X$.
+
+Therefore, minimizing $||X - X_p||^2$ is equivalent to maximizing $u^T Su$. This is a standard optimization problem, which can be solved using the method of Lagrange multipliers. The Lagrangian function for this problem is given by:
+
+$$L(u, λ) = u^T Su - λ(u^T u - 1)$$
+
+Taking the derivative of $L$ with respect to $u$ and $\lambda$, we get:
+$$Su=λu$$
+$$u^Tu=1$$
+
+These equations are known as the eigenequations of $S$. The solution to these equations gives the unit vector $u$ that maximizes $u^T Su$, which is the first principal component of $X$. The corresponding eigenvalue is $\lambda$, which represents the variance of the projected data along $u$.
+
+To summarize, the unit vector $u$ that minimizes the squared distance between the projection of $X$ along $u$ and the vector $x$ corresponds to the first principal component of $X$. This is because the first principal component is the direction along which the variance of the projected data is maximized, and minimizing the squared distance is equivalent to maximizing the variance. The higher-order principal components can be obtained by repeating the same procedure on the residuals of the previous components.
+
+
+$${\textbf{Challenge 2}}$$
+```{r}
+#library(jpeg)
+
+
+# Read in the photo of the cat
+cat_image <- readJPEG('tiger.jpeg')
+
+#PART 1
+
+# Store the RGB color scheme matrices into separate variables
+red_channel <- cat_image[,,1]
+green_channel <- cat_image[,,2]
+blue_channel <- cat_image[,,3]
+
+
+#PART 2
+
+# Perform PCA on each of the RGB color scheme matrices separately
+red_pca <- prcomp(red_channel, center = FALSE)
+green_pca <- prcomp(green_channel, center = FALSE)
+blue_pca <- prcomp(blue_channel, center = FALSE)
+
+
+#PART 3
+
+
+# Plot the fraction of variance as k increases for each matrix
+par(mfrow=c(3,1))
+plot(cumsum(red_pca$sdev^2 / sum(red_pca$sdev^2)), xlab = "Number of PCs", ylab = "Fraction of Variance", main = "Red Channel")
+plot(cumsum(green_pca$sdev^2 / sum(green_pca$sdev^2)), xlab = "Number of PCs", ylab = "Fraction of Variance", main = "Green Channel")
+plot(cumsum(blue_pca$sdev^2 / sum(blue_pca$sdev^2)), xlab = "Number of PCs", ylab = "Fraction of Variance", main = "Blue Channel")
+
+
+#The resulting plot shows the fraction of variance explained by the first k principal components for each of the RGB color scheme matrices. As we can see, the fraction of variance increases rapidly with the first few principal components and then levels off, indicating that most of the variance can be explained with a relatively small number of principal components. This suggests that we can drop the columns corresponding to the smaller eigenvalues to obtain a compressed representation of the image while retaining most of the information.
+
+
+#PART 4
+
+library(jpeg)
+
+# Choose values of k
+k_values <- c(3, 5, 10, 25, 50, 100, 150, 200, 250, 300, 350, ncol(red_pca$x))
+
+# Calculate compression ratio for different values of k
+compression_ratios <- numeric(length(k_values))
+for (i in seq_along(k_values)) {
+  k <- min(k_values[i])
+  
+  # Compress the image by dropping columns corresponding to smaller eigenvalues
+  red_reduced <- red_pca$x[, 1:k] %*% t(red_pca$rotation[, 1:k])
+  green_reduced <- green_pca$x[, 1:k] %*% t(green_pca$rotation[, 1:k])
+  blue_reduced <- blue_pca$x[, 1:k] %*% t(blue_pca$rotation[, 1:k])
+  
+  # Combine the compressed RGB color scheme matrices into a single image
+  compressed_image <- array(data = NA, dim = dim(cat_image))
+  compressed_image[,,1] <- red_reduced
+  compressed_image[,,2] <- green_reduced
+  compressed_image[,,3] <- blue_reduced
+  
+  # Save the compressed image
+  writeJPEG(compressed_image, target = paste0("compressed_", k, ".jpeg"), quality = 100)
+  
+  # Calculate the compression ratio
+  original_size <- file.info("tiger.jpeg")$size
+  compressed_size <- file.info(paste0("compressed_", k, ".jpeg"))$size
+  compression_ratios[i] <- compressed_size / original_size
+}
+
+#print compressed images
+
+image_plot <- function(path, plot_name) {
+  require('jpeg')
+  img <- readJPEG(path)
+  d <- dim(img)
+  plot(0,0,xlim=c(0,d[2]),ylim=c(0,d[2]),xaxt='n',yaxt='n',xlab='',ylab='',bty='n')
+  title(plot_name, line = -0.5)
+  rasterImage(img,0,0,d[2],d[2])
+}
+
+par(mfrow = c(1,2), mar = c(0,0,1,1))
+for (i in c(3, 5, 10, 25, 50, 100, 150, 200, 250, 300, 350, ncol(red_pca$x))) {
+  image_plot(paste0("compressed_", k, ".jpeg"), 
+             paste0(round(i,0), ' Components'))
+}
+
+# Plot compression ratio as a function of k
+plot(k_values, compression_ratios, type = "b", xlab = "Number of PCs", ylab = "Compression Ratio")
+
+
+#The resulting plot shows the compression ratio as a function of the number of principal components used to construct the compressed image. As we can see, the compression ratio increases as k decreases, indicating that the compressed image is smaller than the original image. This suggests that we can compress the image while retaining most of the information by dropping the columns corresponding to the smaller eigenvalues. The compression ratio depends on the value of k, with larger values of k resulting in higher compression ratios but lower levels of compression
+
+
+
+
+```
+
+
+
+$${\textbf{Challenge 3}}$$
+```{r}
+# Load libraries
+library(ISLR2)
+library(pls)
+library(glmnet)
+
+#View(Boston)
+
+#part 1
+# Split the data into training and test sets
+set.seed(123)
+trainIndex <- sample(1:nrow(Boston), round(0.8*nrow(Boston)), replace = FALSE)
+trainData <- Boston[trainIndex, ]
+testData <- Boston[-trainIndex, ]
+
+# Check for missing values in the dataset
+sum(is.na(Boston))
+    
+#part 2
+# PCR with cross-validation
+pcrFit <- pcr(crim ~ ., data = trainData, scale = TRUE, validation = "CV")
+#determine the optimal number of principal components by looking for the minimum value in the prediction residual sum of squares (PRESS)
+pcrM <- which.min(pcrFit$validation$PRESS)
+pcrFit
+pcrM
+
+pcrTestPred <- predict(pcrFit, testData, ncomp = pcrM)
+pcrTestErr <- sqrt(mean((pcrTestPred - testData$crim)^2))
+cat("PCR Test Error:", pcrTestErr, "\n")
+cat("PCR M:", pcrM, "\n")
+
+#part 3
+# PLS with cross-validation
+plsFit <- plsr(crim ~ ., data = trainData, scale = TRUE, validation = "CV")
+
+plsM <- which.min(plsFit$validation$PRESS)
+plsTestPred <- predict(plsFit, testData, ncomp = plsM)
+plsTestErr <- sqrt(mean((plsTestPred - testData$crim)^2))
+cat("PLS Test Error:", plsTestErr, "\n")
+cat("PLS M:", plsM, "\n")
+
+#part 4
+# Ridge regression with cross-validation
+xTrain <- model.matrix(crim ~ ., data = trainData)[,-1]
+yTrain <- trainData$crim
+ridgeFit <- cv.glmnet(xTrain, yTrain, alpha = 0)
+ridgeLambda <- ridgeFit$lambda.min
+xTest <- model.matrix(crim ~ ., data = testData)[,-1]
+yTest <- testData$crim
+ridgeTestPred <- predict(ridgeFit, newx = xTest, s = ridgeLambda)
+ridgeTestErr <- sqrt(mean((ridgeTestPred - yTest)^2))
+cat("Ridge Test Error:", ridgeTestErr, "\n")
+
+#part 5
+# Lasso with cross-validation
+lassoFit <- cv.glmnet(xTrain, yTrain, alpha = 1)
+lassoLambda <- lassoFit$lambda.min
+lassoTestPred <- predict(lassoFit, newx = xTest, s = lassoLambda)
+lassoTestErr <- sqrt(mean((lassoTestPred - yTest)^2))
+nonZeroCoef <- sum(coef(lassoFit, s = lassoLambda) != 0)
+cat("Lasso Test Error:", lassoTestErr, "\n")
+cat("Number of non-zero coefficients:", nonZeroCoef, "\n")
+```
+Part 6
+
+The PCR model with 12 principal components had a test error of 4.378, as measured by PRESS. This means that on average, the PCR model predicted the crime rate in the test data within +/- 4.378 units of the true crime rate. The optimal number of principal components for the PCR model was 12, as determined by finding the minimum PRESS value.
+
+Similarly, the PLS model with 9 latent variables had a test error of 4.379, as measured by PRESS. This means that on average, the PLS model predicted the crime rate in the test data within +/- 4.379 units of the true crime rate. The optimal number of latent variables for the PLS model was 9, as determined by finding the minimum PRESS value.
+
+The Ridge regression model had a test error of 4.274 and the Lasso regression model had a test error of 4.325. The Ridge model had no parameters with zero coefficients, while the Lasso model had 12 parameters with zero coefficients. Overall, the Ridge model had the lowest test error of all the models tested.
+
+Based on the test errors obtained for each of the modeling approaches, it seems that the crime rate can be predicted with a test error of around 4.3-4.4. This means that, on average, the predicted crime rate for a given observation in the test set is expected to differ from the actual crime rate by approximately 4.3-4.4.
+
+There is not a substantial difference in the test errors resulting from the different approaches. The PCR, PLS, and Lasso models all have test errors in the range of 4.3-4.4, with the Ridge model performing slightly better with a test error of 4.27. However, the difference in test errors between these models is relatively small, so it may not be practical to choose one model over the others based on this metric alone. Other factors, such as model interpretability and ease of implementation, may also be important considerations in choosing a final model.
+
+
+$${\textbf{Challenge 4}}$$
+
+```{r}
+##Load the required libraries
+library(dplyr)
+library(ggplot2)
+library(faraway)
+#View(pipeline)
+
+##Fit the regression model
+fit <- lm(Lab ~ Field, data = pipeline)
+summary(fit)
+
+field<-pipeline$Field
+lab<-pipeline$Lab
+
+##Check for non-constant variance (heteroscedasticity)
+residuals <- residuals(fit)
+ggplot(data.frame(field, residuals), aes(x = field, y = residuals)) +
+geom_point() +
+geom_smooth(method = "lm", se = FALSE) +
+ggtitle("Residuals vs Fitted Values Plot")
+
+p_data<-pipeline
+
+##Split the range of Field into 12 groups of size nine
+i <- order(pipeline$Field)
+npipe <- pipeline[i,]
+
+ff <- gl(12,9)[-108]
+meanfield <- unlist(lapply(split(npipe$Field,ff),mean))
+varlab <- unlist(lapply(split(npipe$Lab,ff),var))
+
+##Regress log(varlab) on log(meanfield) to estimate a0 and a1 (remove the last point)
+log_meanfield <- log(meanfield[-12])
+log_varlab <- log(varlab[-12])
+fit_var <- lm(log_varlab ~ log_meanfield)
+summary(fit_var)
+
+##Determine appropriate weights in WLS for Lab on Field
+a0 <- exp(coef(fit_var)[1])
+a1 <- coef(fit_var)[2]
+weights <- a0 * (npipe$Field^a1)
+
+##Use weighted linear regression to correct for non-constant variance
+fit_wls <- lm(Lab ~ Field, data = p_data, weights = weights)
+summary(fit_wls)
+
+```
+
+The weighted linear regression output shows that the relationship between the response variable Lab and the predictor variable Field is highly significant (p < 0.001) with an estimated slope coefficient of 1.18691. This means that for every unit increase in Field, the response variable Lab is expected to increase by an average of 1.18691 units, holding other variables constant.
+
+The R-squared value of 0.9143 suggests that the model explains a large proportion of the variability in the response variable Lab. The adjusted R-squared value of 0.9135 indicates that the model still fits the data well even after adjusting for the number of predictor variables.
+
+The residuals vs. fitted values plot and the normal probability plot should be examined to check the assumptions of the model. Additionally, the significance of the relationship can be confirmed using a hypothesis test on the slope coefficient or by constructing a confidence interval.
+
+$${\textbf{Challenge 5}}$$
+
+Ridge parameter:
+The ridge regression estimate for the coefficients is given by:
+$$w^r = argmin_w { ||y - Xw||^2 + λ ||w||^2 }$$
+
+For the special case with X being a diagonal matrix, we have:
+X = diag(x_1, x_2, ..., x_n)
+
+where x_i = 1 for i = 1, 2, ..., n.
+
+Substituting X and y into the ridge regression equation, we get:
+$$w^r = argmin_w { ||y - Xw||^2 + λ ||w||^2 }$$
+$$= argmin_w { ||y - diag(x_1, x_2, ..., x_n)w||^2 + λ ||w||^2 }$$
+$$= argmin_w { ||[y_1 - x_1w_1, y_2 - x_2w_2, ..., y_n - x_nw_n]||^2 + λ ||[w_1, w_2, ..., w_n]||^2 }$$
+
+Expanding the norm, we get:
+$$w^r = argmin_w { (y_1 - x_1w_1)^2 + (y_2 - x_2w_2)^2 + ... + (y_n - x_nw_n)^2 + λ(w_1^2 + w_2^2 + ... + w_n^2) }$$
+
+Taking the derivative with respect to w_i and setting it to zero, we get:
+$$-2x_i(y_i - x_iw_i) + 2λw_i = 0$$
+$$x_iw_i - y_i + λw_i = 0$$
+$$w_i = y_i/(x_i + λ)$$
+
+Therefore, the ridge parameter wr is given by:
+$$wr = (y_1/(1 + λ), y_2/(1 + λ), ..., y_n/(1 + λ))$$
+
+Lasso parameter:
+The lasso estimate for the coefficients is given by:
+$$w^l = argmin_w { ||y - Xw||^2 + λ ||w||_1 }$$
+
+For the special case with X being a diagonal matrix, we have:
+$$X = diag(x_1, x_2, ..., x_n)$$
+
+where x_i = 1 for i = 1, 2, ..., n.
+
+Substituting X and y into the lasso equation, we get:
+$$w^l = argmin_w { ||y - diag(x_1, x_2, ..., x_n)w||^2 + λ ||w||_1 }$$
+$$= argmin_w { ||[y_1 - x_1w_1, y_2 - x_2w_2, ..., y_n - x_nw_n]||^2 + λ (|w_1| + |w_2| + ... + |w_n|) }$$
+
+We can solve the lasso problem using the coordinate descent algorithm. Specifically, for each coordinate j, we minimize the objective with respect to w_j while fixing all other coordinates at their current values. The solution can be written in terms of the soft-thresholding operator:
+
+$$w_j^l = sign(y_j)(|y_j| - λ)_+ / x_j$$
+
+where $$(a)_+ = max(a, 0)$$ is the positive part of a.
+
+Therefore, the lasso parameter wl is given by:
+$$wl = (sign(y_1)(|y_1| - λ)+/1, sign(y_2)(|y_2| - λ)+/1, ..., sign(y_n)(|y_n| - λ)_+/1)$$
+
