@@ -1,0 +1,366 @@
+---
+title: "Time_series_2"
+group_members: "Ridwan"
+
+date: "2023-07-21"
+output: html_document
+---
+
+```{r}
+```
+
+## 5.11 
+## [A]:
+
+```{r}
+# Load the dplyr package
+library(dplyr)
+
+# Load the fpp3 package
+library(fpp3)
+
+# Load target dataset from package
+aus_retail
+
+
+# Load the necessary packages
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+
+# Load the data
+data(aus_production)
+
+
+# Visualizing the time series data to check for trends and seasonality:
+
+# Convert the date column to a Date format
+aus_production$date <- ymd(aus_production$Quarter)
+
+# Plot the time series with a trend line to the plot
+ggplot(aus_production, aes(x = Quarter, y = Gas)) +
+  geom_line() +
+  geom_smooth(method = "loess", se = FALSE, color = "red") +
+  labs(title = "Gas Production in Australia",
+       x = "Year",
+       y = "Gas Production (million cubic meters)")
+
+
+# Add seasonal components to the plot
+aus_production <- aus_production %>%
+  mutate(year = year(Quarter),
+         month = month(Quarter, label = TRUE))
+
+ggplot(aus_production, aes(x = month, y = Gas, group = year)) +
+  geom_line() +
+  scale_x_discrete(limits = month.abb) +
+  labs(title = "Gas Production in Australia",
+       x = "Month",
+       y = "Gas Production (million cubic meters)")
+
+
+
+# Set seed
+set.seed(2901)
+
+# Define series
+myseries <- aus_retail |>
+  filter(`Series ID` == sample(aus_retail$`Series ID`,1))
+
+# Check:
+myseries
+
+# Visualising the series:
+autoplot(myseries,.vars=Turnover)
+
+
+# Create a training dataset as required
+myseries_train <- myseries |>
+  filter(year(Month) < 2011)
+
+
+```
+
+## 5.11 
+## [B] : Checking that the data have been split appropriately by producing the following plot.
+
+```{r}
+autoplot(myseries, Turnover) +
+  autolayer(myseries_train, Turnover, colour = "red")
+
+```
+
+## 5.11 
+## [C]: Fitting a seasonal naïve model using SNAIVE() applied to the training data above:
+
+```{r}
+fit <- myseries_train %>%
+  model(SNAIVE(Turnover~lag(4)))
+```
+
+## 5.11 
+## [D]: Checking the Residuals
+
+```{r}
+
+fit |> gg_tsresiduals()
+
+#No. The time plot shows an obvious changing variation over time, and there is a trend that the variation increases over time.
+
+#The ACF autocorrelation plot shows multiple significant spikes. This suggests that there are several that the time series has multiple seasonalit and it also indicates that the series is highly correlated with its past values at different lags, which may be due to the presence of different seasonal patterns in the data.
+
+# It's might be worthy to investigate the potential causes of the multiple seasonal periods and adjust the models accordingly to capture the seasonality in the data accurately.
+
+```
+
+## 5.11
+## [E]: Producing forecasts for the test data
+
+```{r}
+fc <- fit |>
+  forecast(new_data = anti_join(myseries, myseries_train))
+fc |> autoplot(myseries)
+```
+
+## 5.11
+## [F]: Comparing the accuracy of the forecasts against the actual values.
+
+```{r}
+#Accuracy of the forecast
+fit |> accuracy()
+
+#Accuracy of actual values:
+fc |> accuracy(myseries)
+
+
+#Looking at the average difference between in the following measures such as the Mean Absolute Percentage Error (MAPE), Root Mean Squared Error (RMSE), Mean Absolute Error (MAE), and Mean Error (ME):
+
+# ME: The forecast tends to overestimate the actual values
+# RMSE: The forecast has higher accuracy (RMSE: 1.79) compared to the actual values' (RMSE: 4.19)
+# MAE: The forecast has higher accuracy (MAE: 1.01) compared to the actual values' (MAE: 3.38)
+# ACF1: The actual data's not (or less) correlated (with value of 0.160) , while the forecast (value = 0.282 => further from zero) indicate stronger correlation.
+```
+
+## 5.11
+## [G]: How sensitive are the accuracy measures to the amount of training data used?
+
+```{r}
+# Increasing the amount of training data (by providing the model with more information about the patterns and trends in the time series) improves the accuracy of the forecast. Conversely, using too little training data leads to a poorly trained model that is underfitting the time series.
+
+# However, having too many training data leads to overfitting. Having an optimal amount of training data that balances the need for the model to have enough information with the risk of overfitting the data.
+
+#For this challenge, a seasonal naïve model is essentially repeating the same forecast each year, based on the seasonal component observed in the previous year. Therefore, the accuracy measures in this challenge may not change significantly as more data are added to the training set.
+
+```
+
+## 8.8  
+## [A]
+
+```{r}
+# Loading ggplot2 for visualization
+library(ggplot2)
+
+# Load dataset
+aus_production
+
+# Convert the Gas variable to a time series object:
+gas_ts <- ts(aus_production$Gas, start = c(1956, 1), frequency = 12)
+
+
+# Plot the time series to visualize any trends and seasonality:
+plot(gas_ts)
+
+
+# Check for stationarity by running the Augmented Dickey-Fuller test:
+library(tseries)
+adf.test(gas_ts)
+
+# p-value of the ADF test = 0.2002 (greater than 0.0)5, the time series is not stationary and will require differencing to remove any trends.
+
+
+library(forecast)
+gas_ets <- ets(gas_ts, model = "ZZZ")
+# The "ZZZ" argument specifies that the function should choose the model automatically based on the AIC criterion.
+
+
+# Fit an ETS model for the Gas data from aus_production
+fit <- aus_production %>%
+  model(
+    additive = ETS(Gas ~ error("A") + trend("A") + season("M")),
+    multiplicative = ETS(Gas ~ error("M") + trend("A") + season("M"))
+    )
+
+#View the fit
+fit
+
+# Forecast the next few years using the forecast() function:
+gas_fcst <- forecast(gas_ets, h = 24)
+
+
+#Visualize the forecasted values:
+plot(gas_fcst)
+
+# Why is multiplicative seasonality necessary here?
+# Gas production is typically affected by seasonal factors, such as the weather and consumer demand. These factors can cause the variation in production to be proportional to the level of the time series, which is known as multiplicative seasonality. In contrast, additive seasonality assumes that the variation in production is constant across all levels of the time series.
+
+#Test if if damped trend improves the forecasts. (A damped trend is a trend that gradually decreases in magnitude over time, which can be useful for capturing long-term changes in the time series that are not linear. To add a damped trend to the ETS model, we can set the "damped" argument to TRUE:)
+
+gas_ets_damped <- ets(gas_ts, model = "ZZZ", damped = TRUE)
+
+
+# Comparing the forecast accuracy of the original ETS model and the damped ETS model using the accuracy() function:
+accuracy(gas_fcst)
+accuracy(forecast(gas_ets_damped, h = 24))
+
+#Lower RMSE for the damped trend implies that the damped trend improves the forecast accuracy.
+```
+
+## 9.11
+## [2]: A classic example of a non-stationary series are stock prices. Plot the daily closing prices for Amazon stock (contained in gafa_stock), along with the ACF and PACF. Explain how each plot shows that the series is non-stationary and should be differenced.
+
+```{r}
+# Loading fpp3:
+library(fpp3)
+
+# Loading tsibble
+library(tsibble)
+
+# Load the gafa_stock dataset:
+data(gafa_stock)
+
+#Check the first few rows:
+head(gafa_stock)
+
+## Plot the daily closing prices for Amazon stock 
+gafa_stock %>%
+  filter(Symbol == 'AMZN') %>%
+  autoplot(Close) +
+  labs(title="Amazon Stock Closing Prices", y = "Closing Price")
+
+# The plot should show an increasing trend in the Amazon stock prices (until Q4 2018), indicating non-stationarity.
+
+## Plot the daily closing prices for Amazon stock 
+gafa_stock %>%
+  filter(Symbol == 'AMZN') %>%
+  gg_tsdisplay(Close, plot_type = "partial")
+
+# The PACF plot shows the partial autocorrelation of the time series at different lags, which represents the correlation between the time series at a given lag and the same series shifted by that lag, after removing the effects of correlations at shorter lags. The PACF plot  also show a gradual decrease in the partial autocorrelations with increasing lags, indicating that the series is not stationary.
+
+# From both the ACF and PACF plots, we can see that the autocorrelations and partial autocorrelations do not decay quickly to zero, indicating that there is still some correlation between the past and future values of the time series. This indicates that the time series is non-stationary and should be differenced to remove the trend and any seasonality.
+```
+
+## 9.11
+
+```{r}
+#Checking the pelt dataset:
+head(pelt)
+
+## Produce a time plot of the time series.
+pelt %>% 
+  autoplot(Hare) + labs(title="Time plot of Hare")
+
+
+
+```
+## 9.11
+
+```{r}
+# yt = c + ϕ1yt-1 + ϕ2yt-2 + ϕ3yt-3 + ϕ4yt-4 + εt
+## based on the model, we can see the p=4, d=0, q=0
+## ARIMA(p=4, d=0, q=0)
+
+#The given model is an AR(4) model, where:
+
+#p = 4, since the model includes 4 lagged values of the dependent variable.
+#d = 0, since there is no differencing in the model.
+#q = 0, since there is no error term lagged in the model.
+#Therefore, the ARIMA model for this equation is ARIMA(4,0,0).
+
+```
+
+## 9.11
+
+```{r}
+#In general, for an AR(p) model, we would expect the ACF to decay gradually, while the PACF has a sharp cut-off after lag p.
+
+#For above AR(4) model, we would expect to see significant autocorrelation in the first 4 lags of the ACF plot, followed by a rapid decay in autocorrelation as the lags increase. Additionally, we would expect the PACF plot to show significant autocorrelation at lags 1 to 4, with little or no significant autocorrelation at higher lags. If we observe such patterns in the ACF and PACF of the data, it would suggest that the AR(4) model is appropriate for the data.
+
+## Plot the ACF and PACF of the data
+pelt %>%
+  gg_tsdisplay(Hare, plot_type = "partial")
+
+```
+## 9.11 
+
+```{r}
+data(pelt, package = "MASS")
+
+#To calculate the forecasts for the next three years (1936-1939), we can use the estimated AR(4) model with the given parameter values, along with the last five values of the time series as initial values. The general formula for the AR(4) model is:
+
+#y(t) = c + ϕ1y(t-1) + ϕ2y(t-2) + ϕ3y(t-3) + ϕ4y(t-4) + ε(t)
+
+#where y(t) represents the value of the time series at time t, and ε(t) is the error term at time t. Using the estimated parameter values and the last five values of the series, we can compute the forecasts for the next three years as follows:
+
+
+# Define the estimated parameters
+c <- 30993
+phi1 <- 0.82
+phi2 <- -0.29
+phi3 <- -0.01
+phi4 <- -0.22
+
+# Define the last four observations
+y_1935 <- 15760
+y_1934 <- 81660
+y_1933 <- 89760
+y_1932 <- 82110
+y_1931 <- 19520
+
+## forecasts for the next three years (1936–1939):
+#For year 1936:
+#y(1936) = c + ϕ1y(1935) + ϕ2y(1934) + ϕ3y(1933) + ϕ4y(1932)
+pred_1936 =  c + phi1*y_1935 + phi2*y_1934 + phi3*y_1933 + phi4*y_1932
+cat("The forecast for the number of hare pelts in 1936:", pred_1936, "\n")
+
+#For year 1937:
+#y(1937) = c + ϕ1y(1936) + ϕ2y(1935) + ϕ3y(1934) + ϕ4y(1933)
+pred_1937 <-  c + phi1*pred_1936 + phi2*y_1935 + phi3*y_1934 + phi4*y_1933
+cat("The forecast for the number of hare pelts in 1937:", pred_1937, "\n")
+
+#For year 1938:
+#y(1938) = c + ϕ1y(1937) + ϕ2y(1936) + ϕ3y(1935) + ϕ4y(1934)
+pred_1938 <- c + phi1*pred_1937 + phi2*pred_1936 + phi3*y_1935 + phi4*y_1934
+cat("The forecast for the number of hare pelts in 1938:", pred_1938, "\n")
+
+#For year 1939:
+#y(1939) = c + ϕ1y(1938) + ϕ2y(1937) + ϕ3y(1936) + ϕ4y(1935)
+pred_1939 <- c + phi1*pred_1938 + phi2*pred_1937 + phi3*pred_1936 + phi4*y_1935
+cat("The forecast for the number of hare pelts in 1938:", pred_1939, "\n")
+
+```
+## 9.11 
+
+```{r}
+
+
+pelt_2 <-data_frame(pelt$Year,pelt$Hare)
+names(pelt_2) <- c('year','hare')
+pelt_ts <- ts(pelt_2$hare)
+
+# Fit the AR(4) model
+model <- arima(pelt_ts, order = c(4,0,0), include.mean = TRUE, method = "ML")
+
+# Obtain the forecasts for the next three years
+forecast <- forecast(model, h = 3)
+
+# Print the forecasts
+print(forecast$mean)
+
+#The forecasts obtained using the forecast() function are different from the manual calculations we did earlier. This is because the forecast() function uses a different method to estimate the parameters of the ARIMA model (maximum likelihood estimation) than the method we used (least squares estimation). In addition, the forecast() function takes into account the uncertainty in the parameter estimates when computing the forecasts, which can lead to differences from the manual calculations.
+
+```
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

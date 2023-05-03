@@ -1,0 +1,188 @@
+---
+title: "Advanced ML 3"
+author: "Ridwan_Abdusalam"
+date: "2023-02-26"
+output: html_document
+---
+
+```{r}
+
+```
+
+##  1:
+
+## 1: How PCA can be used to reduce the number of variables:
+
+
+Principal Component Analysis reduces number of variables in a large dimensional data set by finding a linear transformation that projects the data into a lower-dimensional space while retaining as much of the original variation as possible. This is done by identifying the linear combinations of the original variables that capture the most variation in the data set (also known as principal component).
+
+The number of principal components chosen is determines how much of variance is retained, or how much of dimentionality is reduced in the data. 
+
+Using a dataset with 15 variables as an example. If we apply PCA to the data set, It might reveal that the first 5 principal components that explains 95% of the variance in the data. We can then discard the remaining 10 variables and retain only the first 5 principal components. That way we wouldd have reduced the dimensionality of the dataset from 15 variables to just 5 variables.
+
+The following are the steps involved in achieving reducing high dimensional data using Principal Component Analysis:
+Certainly, I can explain the PCA algorithm in a step-by-step manner:
+
+1: Standardize the data: PCA requires that the data is standardized, which means that each feature (column) has a mean of 0 and a standard deviation of 1. This is done by subtracting the mean from each value and then dividing by the standard deviation.
+
+2: Calculate the covariance matrix: The covariance matrix describes how each feature in the dataset is related to every other feature. It is calculated by multiplying the standardized data matrix by its transpose.
+
+3: Calculate the eigenvectors and eigenvalues of the covariance matrix: Eigenvectors are the directions in the feature space that capture the most variance in the data, while eigenvalues represent the amount of variance explained by each eigenvector. PCA calculates the eigenvectors and eigenvalues of the covariance matrix using a linear algebra method called singular value decomposition (SVD).
+
+4: Sort the eigenvectors by their corresponding eigenvalues: The eigenvectors are sorted in descending order based on their corresponding eigenvalues, so that the eigenvector with the highest eigenvalue (i.e., the one that explains the most variance) is the first principal component.
+
+5: Choose the number of principal components: The number of principal components chosen is a trade-off between retaining enough variance in the data and reducing the dimensionality of the dataset. Typically, the number of principal components is chosen so that they explain at least 70-90% of the variance in the data.
+
+6: Project the data onto the new feature space: Finally, the data is projected onto the new feature space, which is defined by the chosen principal components. This is done by multiplying the standardized data matrix by the matrix of eigenvectors, which results in a new matrix of lower dimensionality.
+
+
+
+
+
+
+## 2: Please highlight limitations of PCA:
+
+The following are some of the limitations of princial component analysis:
+
+1) Assumption of linearity: PCA is based on the assumption of a linear relationship between the variables. If the relationship between the variables is non-linear, PCA may not be the best technique for dimensionality reduction.
+
+2) Requirement of normalization: PCA requires that the data is standardized or normalized, meaning that each feature has a mean of zero and a variance of one. If the data is not normalized, then the results of PCA may be misleading.
+
+3) Sensitivity to outliers: PCA is sensitive to outliers in the data. Outliers can greatly influence the calculation of the covariance matrix and therefore the resulting principal components.
+
+4) Suitability to categorical data: PCA is designed for continuous numerical data. If the dataset contains categorical variables, PCA may not be the best technique for dimensionality reduction.
+
+5) Interpretation: The interpretation of the principal components requires careful consideration, as they are not always easily interpretable in the original feature space. Each principal component is a linear combination of the original features, and their meaning may not be immediately clear.
+
+6) Overfitting: Just like other ML techniques, if PCA is too many principal components are chosen, it can lead to overfitting of data.
+
+
+
+
+```{r}
+
+
+```
+
+## 2: 
+## 1. Classification Trees:
+
+The classification tree has roots in logistic regression and they are used for predicting categorical outcomes, where the goal is to predict which class or category an observation belongs to based on a set of predictor variables. They use information gain or Gini impurity to measure the separation of categories. The algorithm for growing a classification tree involves the following steps:
+
+1) Start with the entire dataset and consider all possible predictor variables as potential splits.
+
+2) Choose the predictor variable that best separates the data into distinct categories. This is typically done by selecting the variable that maximizes the information gain or the Gini impurity, which measures the degree of randomness or impurity of the categories at each node.
+
+3) Split the data based on the selected predictor variable and create two new branches, one for each category.
+
+4) Do a recursive repetition by continuing to split the data into smaller and smaller groups until a stopping criterion (e.g., the minimum number of observations per leaf node is reached). is met. 
+The result is a tree structure where each internal node represents a decision based on a predictor variable, and each leaf node represents a categorical prediction
+
+
+
+## 2. Regression Trees:
+Regression trees are used for predicting continuous outcomes, where the goal is to predict a numerical value based on a set of predictor variables. They stem out of Recursive Partitioning, where, the data is recursively partitioned into smallersubgroups based on the predictor variables until a stopping criterion is met. The algorithm for growing a regression tree involves the following steps:
+
+
+1) Start with the entire dataset and consider all possible predictor variables as potential splits. (just like classification trees)
+
+2) Choose the predictor variable that best separates the data into distinct groups based on the mean value of those groups, by selecting the variable that minimizes the sum of squared errors (SSE) or the mean squared error (MSE) of the groups at each node.
+
+3) Split the data based on the selected predictor variable and create two new branches, one for each group.
+
+4) Iterate the process on each branch recursively, until the stopping criterion is satisfied.
+
+
+```{r}
+
+```
+## 3: 
+
+Pruning is the technique of removing branches or nodes from the tree that do not contribute significantly to the accuracy of the a tree's pruning. It's used in preventing overfitting and improving the generalization performance of a decision tree. The goal of pruning is to simplify the tree by removing some of its branches or nodes while preserving its predictive accuracy on new data.
+
+The algorithm of pruning involves evaluating the effect of removing a subtree from the tree and replacing them with leaf nodes by comparing the predictive accuracy of the original tree with the predictive accuracy of the pruned tree on the validation data, and it involves the following steps:
+
+1) Split the data into training and validation sets.
+
+2) Grow the tree to its maximum size using the training data.
+
+3) Evaluate the predictive accuracy of the tree on the validation data.
+
+4) For each internal node in the tree, consider the effect of removing the subtree rooted at that node. This can be done by calculating the difference in predictive accuracy between the original tree and the pruned tree.
+
+5) If removing the subtree improves the predictive accuracy on the validation data, remove it and replace the subtree with a leaf node that predicts the most common outcome in that subgroup.
+
+6) Iterate steps 4 and 5 recursively, considering each internal node in turn until no further improvement in predictive accuracy is achieved or a minimum tree size is reached.
+
+
+
+```{r}
+
+
+```
+
+## 4: Why Random Forest outperforms other methods:
+
+Above all, Random Forest usually outperforms regular regression methods because it's an ensemble learning algorithm, where multiple decision trees are trained on different subsets of the data and combined to make a final prediction. Ensemble learning involves combining the predictions of several models, to reduce the impact of individual model errors and achieve better performance overall.
+
+Other reasons why a Random Forest may outperform regular regression methods such as linear regression, logistic regression, and lasso regression includes:
+
+Nonlinearity: Random Forest can model nonlinear relationships between the input and output variables because each decision tree in the Random Forest is trained on a random subset of the data and a random subset of the input features, which allows it to capture complex nonlinear interactions between the features.
+
+Robustness to noise: Random Forest is less sensitive to noise in the data compared to regular regression methods because the algorithm aggregates the predictions of multiple decision trees, which reduces the impact of outliers and random fluctuations in the data.
+
+Ability to avoid overfitting: Random Forest is less prone to overfitting compared to regular regression methods because each decision tree in the Random Forest is trained on a random subset of the data, which reduces the variance of the model and helps to prevent overfitting.
+
+
+
+
+
+```{r}
+## 5:  
+## Use the Trasaction.csv dataset to create payment default classifier ('payment_default ' column) and explain your output using:
+## Classification Tree (CART)
+
+library(caret)
+library(randomForest)
+library(rpart)
+
+# Load dataset
+data <- read.csv("Transaction.csv")
+
+# Split dataset into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(data$payment_default, p = .7, list = FALSE)
+train <- data[trainIndex, ]
+test <- data[-trainIndex, ]
+
+
+# Build CART model
+cart_model <- rpart(payment_default ~ ., data = train, method = "class")
+
+
+# Make predictions on test set
+cart_pred <- predict(cart_model, newdata = test, type = "class")
+
+# Calculate accuracy
+table(cart_pred, test$payment_default)
+
+
+# Build Random Forest model
+rf_model <- randomForest(payment_default ~ ., data = train)
+
+# Make predictions on test set
+rf_pred <- predict(rf_model, newdata = test)
+
+# Calculate accuracy
+table(rf_pred, test$payment_default)
+
+
+
+## Random Forest
+
+```
+
+
+
+```{r}
+

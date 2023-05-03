@@ -1,0 +1,361 @@
+---
+title: "Advanced_ML_2"
+author: "Ridwan_Abdusalam"
+date: "2023-01-28"
+output: html_document
+---
+
+```{r}
+
+```
+
+## Instructions:
+
+Submit your writeup and code in an R Markdown and HTML document.
+
+Provide evidence to support your answers.
+Please:
+
+[20 Challenge] For the above dataset (Dependent variable: heart_attack)
+How would you choose a sample subset (such as missing value, nulls, empty columns) of this dataset? What criteria would you consider when selecting a training subset from the above dataset (such as balanced distribution between training and test for the treated observations) ?
+Randomly split the dataset into test and training sets using 80% observations as training set. Fit a simple linear regression model (full model) to predict the heart attack probability and test your model against the test set.  Explain your model and obtain the R^2 for the predictions of the test data set (i.e., a true OOS R^2).
+ 
+
+[10 Challenge] Explain cross-validation and highlight the problems that may be associated with a cross-validation approach.
+ 
+
+[25 Challenge] Use only the training sets from Challenge 1 and estimate an 8-fold cross-validation to estimate the R^2 of the full model. e., use cross-validation to train (on 7/8 of the training set) and evaluate (on 1/8 of the training set).  Calculate the mean R^2 from the 8-fold cross-validation and compare it with the R^2 from Challenge 1.  Please explain your observation.
+ 
+
+[10 Challenge] Explain Lasso regression and how does it work. List the pros and cons associated with using it.
+ 
+
+[25 Challenge] Use again the training sets from Challenge 1 and
+Fit a Lasso regression to predict the heart attack probability. Use cross-validation to obtain lambda_min as well as lambda_1se Explain the two resulting models. Which one would you choose?
+Compare model outputs from Challenges one, three, and five.
+ 
+
+[10 Challenge] What is AIC, and how is it calculated? When to use AICc (corrected AIC)?
+
+```{r}
+#Challenge1:
+#[20 Challenge] For the above dataset (Dependent variable: heart_attack)
+#How would you choose a sample subset (such as missing value, nulls, empty columns) of this dataset? What criteria would you consider when selecting a training subset from the above dataset (such as balanced distribution between training and test for the treated observations) ?
+#Randomly split the dataset into test and training sets using 80% observations as training set. Fit a simple linear regression model (full model) to predict the heart attack probability and test your model against the test set.  Explain your model and obtain the R^2 for the predictions of the test data set (i.e., a true OOS R^2).
+
+
+library(mice)
+library(dplyr)
+library(caret)
+library(lmtest)
+library(rsq)
+library(caret)
+library(glmnet)
+library(ggplot2)
+library(gridExtra)
+library(rsample)
+library(graphics)
+
+
+#Loading the data:
+heart <- read.csv("heart.csv", header = TRUE)
+
+
+#1(a): Before choosing a sample subset, I'll do the following:
+
+#(i) Checking for null values:
+# Find the sum of null values in each column
+null_values <- colSums(is.na(heart))
+#Presence of null values
+#Removing the columns without any value:
+heart <- heart %>% select(-family_record, -past_record, -wrist_dim)
+
+#There's presence of na's in some rows, but the appropriate method of filling null value will be determined by the nature of the data.
+na_counts <- colSums(is.na(heart))
+na_counts
+#Looking at the counts of null values per each column, it's obvious the the missing values occur at random and the count per row is almost negligible. Therefore, I'll be removing all rows na's.
+
+#creating a copy of heart dataset and removing the nas 
+heart_df <- na.omit(heart)
+
+
+#(ii) Check for distribution:
+#Create a list of density plots for each column
+density_plots <- lapply(heart_df, function(x) {
+    ggplot(data.frame(x), aes(x)) + 
+    geom_density() +
+    ggtitle(colnames(x))
+})
+# view the plots
+density_plots
+#Data follows normal distribution
+
+#(iii)
+#Checking for extreme outliers:
+boxplot(heart_df, main = "Boxplot of features", ylab = "Values", xlab = "Features", col = c("orange", "green"))
+#Presence of outliers
+
+# calculate Q1, Q3 and IQR for each column
+Q1 <- apply(heart_df, 2, quantile, probs = 0.25)
+Q3 <- apply(heart_df, 2, quantile, probs = 0.75)
+IQR <- Q3 - Q1
+
+# calculate the upper and lower bounds
+upper_bound <- Q3 + 1.5 * IQR
+lower_bound <- Q1 - 1.5 * IQR
+
+# replace the outlier with the mean of each column
+for(name in names(heart_df)){
+    heart_df[which(heart_df[name] > upper_bound[name] | heart_df[name] < lower_bound[name]), name] <- mean(heart_df[name], na.rm = TRUE)
+}
+
+
+
+#(ii): 
+#The following criteria should be considered to ensure the subset is representative of the entire dataset and will lead to accurate and reliable results:
+
+#Representativeness of the sample: The training subset should be representative of the entire dataset in terms of the distribution of the different variables and classes. This can be achieved by using stratified sampling, where the observations are randomly selected within each class or group.
+
+#Balanced distribution between training and test sets: It is important to have a balanced distribution of observations between the training and test sets. This can be achieved by randomly selecting a certain percentage of the observations for the training set and the remaining observations for the test set. A common split is 80% for training and 20% for testing.
+
+#Data distribution: The distribution of data in the training set should be similar to the distribution of data in the test set. This can be achieved by using an appropriate sampling method (e.g. stratified sampling) that ensures that the distribution of the variables in the training and test sets are similar.
+
+#Large sample size: The sample size of the training set should be big enough to ensure that the model being trained has enough data to learn from. A large enough sample helps to achieve accurate model.
+
+#Data Quality: The dataset should be clean and free of errors and missing values. This can be achieved by removing any observations with missing or invalid values and ensuring that the data is consistent.
+
+
+
+
+#Split into train and test datasets
+split <- initial_split(heart_df, prop = 0.8)
+train <- as.data.frame(training(split))
+test <- as.data.frame(testing(split))
+
+train <- na.omit(train)
+test <-  na.omit(test)
+
+#Fit a simple linear regression model (full model) to predict the heart attack probability and test your model against the test set.
+
+# Fit the linear regression model
+model1 <- lm(heart_attack ~ ., data = train)
+# Summarize the model
+summary(model1)
+
+#Of all the predictors, past_pain, weight, height, and fat_free_wt are the only significant variable at the significance level of 0.05.
+#That implies:
+#For every unit increase in past_pain, there's an increase of 0.132735 heart_attack.
+#For every unit increase in weight, there's an increase of 0.057276 heart_attack.
+#For every unit increase in fat_free_weight, there's an increase of 0.083162 heart_attack.
+
+#The in-sample R-squared of also shows that 98.58% of the variation in heart_attack was explained by the model.
+
+# Testing my model against the test set:
+predictions <- predict(model1, newdata = test)
+
+# Calculate the R^2 for the predictions on the test data
+true_y <- test$heart_attack
+mean_true_y <- mean(as.numeric(true_y))
+
+diff1 <- sum((true_y - predictions) ^ 2)
+diff2 <- sum((true_y - mean_true_y) ^ 2)
+
+OOS_R_sq <- 1 - (diff1 / diff2)
+OOS_R_sq # 99.47%
+
+
+# The coefficient of determination, R^2 of 99.47% implies that the model is extremely efficient in explaining out-of-sample variation heart_attack.
+
+```
+
+
+
+
+
+
+```{r}
+
+#Challenge 2:
+# Explain cross-validation and highlight the problems that may be associated with a cross-validation approach.
+
+
+# Cross-validation is a statistical method of evaluating the performance of an ml model by dividing the data into several subsets known as  "folds". The process involves dividing the data into training and test sets, such that the model is trained on the training data set, and it's evaluated on the test data set. 
+
+# The basic idea behind cross-validation is to use a different subset of the data as the test set for each iteration, allowing the model to be evaluated on different parts of the data. This helps to provide a more robust estimate of the model's performance, as it is tested on multiple subsets of the data.
+
+# Some of the problems that may be associated with a cross-validation approach include:
+
+#(a) Limited sample size: If the sample size of the test set is too small, cross-validation may not be appropriate as it may lead to a lack of statistical power, and unreliable estimates of the model's performance.
+
+#(b) Imperfect randomization of sample: If the data is not randomly distributed, the test sets may not be representative of the overall population, which would then lead to biased results.
+
+#(c) Expensive computational power: When working with large datasets and/or a complex model, cross-validation can be computationally expensive, and this could create difficulties in performing multiple ('n') iterations of cross-validation, which is generally recommended in order to provide a robust estimate of the model's performance.
+
+#(d) Sensitivity to number of folds selected: Based on the chooice of folds selected, a higher number of folds will give more accurate results but will also increase the computation time. Therefore, cross-validation can be sensitive to the choice of the number of folds
+
+#(e) Data leakage: If the data is not properly partitioned, information from the test set may leak into the training set, leading to overly optimistic or inaccurate results.
+
+#(f) Inability to detect Overfitting: If the model is overfit to the training set, cross-validation may not be able to detect this, leading to overly optimistic results.
+
+#(g) Selection bias: If the data is not randomly partitioned, the results may be biased towards certain subsets of the data.
+
+#(h) Lack of external validation: Cross-validation only provides an estimate of the model performance on the data used to fit the model, which may not be representative of the model's performance on new, unseen data.
+```
+
+
+```{r}
+#Challenge 3:
+
+#Using only the training sets from Challenge 1 and estimate an 8-fold cross-validation
+# I'm setting this seed to control the randomization
+set.seed(1826)
+cv <- trainControl(method = "cv", number = 8)
+cv_train_model <- train(heart_attack ~ ., data = train, method = "lm", trControl = cv)
+
+
+# R_sqr of each fold
+r_sq <- cv_train_model$resample$Rsquared
+mean_r_sq <- mean(r_sq)
+
+
+print(OOS_R_sq) # R^2 from Challenge 1 = 0.9947727
+print(mean_r_sq) # R^2 from the 8-fold cross-validation = 0.9751637
+
+#Explanation:
+# The lower mean R^2 from cross validation compared to the out of sample R^2 from a linear model suggests that the model is overfitting to the training data. Perhaps I could use Regularization technique to prevent overfitting, maybe I can reduce the model to a parsimonous model.
+```
+
+
+
+
+```{r}
+#Challenge 4:
+
+# Lasso regression (L1 regularization) is a technique used to prevent overfitting in linear regression models by adding a penalty term to the cost function. The penalty term (|βi|), also known as the L1 norm. |βi| encourages the model to have sparse solutions where some of the coefficients are exactly equal to zero.It is used to identify the most important predictors in the dataset.
+
+# Lasso regression works by minimizing the following cost function:
+
+# Cost = (1/n) * Sum(y - y_pred)^2 + λ * ∑|beta_i|
+
+#Where:
+# y = target variable
+# y_pred = predicted value,
+# n = number of observations,
+# λ = regularization parameter,
+# βi are the coefficients of the model.
+
+# λ controls the strength of the penalty term. A larger λ value will result in more coefficients being set to zero, while a smaller λ value will result in fewer coefficients being set to zero. The goal of Lasso regression is to find the optimal value of λ that minimizes the cost function and produces a model that has the best trade-off between accuracy and sparsity.
+
+#Pros:
+#(a) Lasso regression improves model interpretability by reducing the number of unwanted features included in a model.
+#(b) It automatically performs variable selection by setting certain coefficients to zero. Therefore, it is useful for feature selection.
+#(c) It is useful in high dimensional datasets, where the number of features is greater than the number of observations.
+#(d) Lasso regression handles multi-collinearity which is a problem in traditional multiple regression.
+
+
+#Cons:
+#(a) Lasso regression can be affected by outliers.
+#(b) It may not perform well when the number of observations is less than the number of features.
+#(c) Lasso regression can be sensitive to the choice of the regularization parameter, so it may require some trial and error to find the optimal value.
+#(d) It is not always good at predicting the target variable.
+
+```
+
+
+```{r}
+#Challenge 5:
+#Fit a Lasso regression to predict the heart attack probability. Use cross-validation to obtain lambda_min as well as lambda_1se Explain the two resulting models. Which one would you choose?
+
+set.seed(123)
+x <- as.matrix(train[0:16])
+y <- as.matrix(train[17])
+cv_ls = cv.glmnet(x, y, alpha = 1, family = "gaussian")
+
+lambda_min = cv_ls$lambda.min
+lambda_min # 0.009323676
+lambda_1se = cv_ls$lambda.1se
+lambda_1se # 0.09543072
+
+#lambda_1se has a value of 0.09543072 much greater than lambda_min of 0.009323676. This implies that there's more regularization (and thus simpler model, smaller coefficients) with the lambda_1se compared to lambda_min.
+
+#I'll choose lambda_1se because it implies stronger penalty, and more coefficients being set to zero.
+
+
+#Compare model outputs from Challenges one, three, and five
+
+
+
+# Testing my model against the test set:
+predictions2 <- predict(cv_ls, as.matrix(test[,1:16]), lambda_1se)
+
+# Calculate the R^2 for the predictions on the test data
+true_y <- test$heart_attack
+mean_true_y2 <- mean(as.numeric(predictions2))
+
+diff1_2 <- sum((true_y - predictions2) ^ 2)
+diff2_2 <- sum((true_y - mean_true_y2) ^ 2)
+
+OOS_R_sq_2 <- 1 - (diff1_2 / diff2_2)
+OOS_R_sq_2 # 97.73%
+
+
+
+#Compare model outputs from Challenges one, three, and five.
+models <- c("Challenge1", "Challenge3", "Challenge5")
+r_sqr_vaues <- c(OOS_R_sq, mean_r_sq, OOS_R_sq_2)
+
+comparison_df <- data.frame(models, r_sqr_vaues)
+comparison_df
+
+
+#The introduction of penalty function, λ in the lasso regression further shrinks the R_squared further. Compared to the effects of cross-validation. The major noticeable effect of lasso regression in cross validation here is that it helps to reduce overfitting and improve the generalization performance of the model by selecting only a subset of the most important features.
+
+#Remaining coefficients after lasso regression:
+outputs_rem <- coef(cv_ls, select = "1se")
+outputs_rem
+
+
+```
+
+
+```{r}
+#Challenge 6:
+#What is AIC, and how is it calculated?
+
+#AIC stands for Akaike Information Criterion. It's a measure of the relative quality or futtness of statistical models. 
+
+#Mathematically, AIC is represented as:
+# AIC = 2k - 2ln(L)
+# Alternatively: AIC = ResidualDeviance + 2 ∗ df
+#Where:
+# k is the number of parameters in the model,
+# and L is the measure of likelihood of the model.
+
+#It is calculated by adding the number of parameters in the model and a penalty term for the number of observations in the dataset, and then taking the negative log likelihood of the model. 
+
+
+
+#When to use AICc (corrected AIC)?
+#Both AIC and AICc can be used to evaluate the fitness of a model. However, AICc is a much better metric as it corrects the major flaw of AIC (reduced power with small data) by creating an improved approx. to Out of Sample deviance.
+
+# AICc = ResidualDeviance + 2 ∗ df ∗ (n/(n − df −1))
+
+# AIC is efficient for big n/df. However, when number of parameters is huge with df ≈ n, AIC overfits and therefore becomes a bad estimate. In this case, we use AICc.
+
+#In general, AICc performs better than AIC on all types of data size, and can be used anywhere AIC is needed.
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

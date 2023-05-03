@@ -1,0 +1,485 @@
+---
+title: "Advanced Machine Learning"
+author: "Ridwan_Abdusalam"
+date: "2023-01-08"
+output: html_document
+---
+
+```{r}
+```
+
+
+```{r}
+###############################################################
+########    Section 1: Challenge 1:6    #######################
+######## Creating a matrix of 10000 by 1001 ###################
+###############################################################
+
+
+#Challenge 1
+#Produce a 10,000 x 1001 matrix (rows x cols) of random numbers drawn from N(0,1)
+#setting seed for replication purposes and linear model
+set.seed(9610) #consistent random process using last 4 digits of my phone number
+random_numbers <- as.data.frame(matrix(rnorm(10010000),nrow=10000,ncol=1001)) #dataframe
+summary(random_numbers)
+str(summary(random_numbers))
+#above is 1001*10000 z's for 10000 rows and 1001 variables
+
+
+
+#Questoin 2:
+Y <- as.numeric(random_numbers[, 1])
+X <- random_numbers[, -1]
+
+
+
+#Questoin 3:
+#[15 pts] Regress y on x’s. Is an intercept needed?  Why?  Why not?
+#Build a linear model for V1 as y and V2:V1001 as x's
+lim1 <- lm(V1~0+.,data = random_numbers)
+summary(lim1)
+hist(lim1$effects)
+hist(lim1$residuals)
+hist(lim1$coefficients)
+
+#The matrix creates a sample of 10010000 observations for 10000 rows and 1001 variables for normal distribution values between -3.0 and 3.0. When a linear model is created 
+
+# Is an intercept needed? => No:
+#There is no need to include an intercept because, an intercept provides the exogenous attribute that is not explained by the regression estimates. In this model, there was no exogenous effect expected from outside because the the random generation of the data set was entirely controlled. No confounding effects from any external source
+
+
+
+#Questoin 4:
+#creating a dataframe for p values
+pval <- summary(lim1)$coefficients[0:1000,"Pr(>|t|)"]
+#p_values <- summary(lim1)$coefficients[, 4]
+pval
+#p_values
+
+#creating an histogram of p values to show distribution
+hstplot <- hist(pval,xlab="P-Values", ylab="Frequency", ylim=c(0,120),main="Distribution of Coefficients P-Values", col="blue")
+hist(lim1$effects)
+hist(lim1$residuals)
+hist(lim1$coefficients)
+# The histogram of p-values showed a near-uniform distribution, with about 92 variables recording a value of 
+# below 0.1 as shown the histogram.
+# Also, The distribution of coefficient estimates showed showed a normal curve and it shows that the marginal effects 
+# ranged between -0.03 and 0.04.
+
+
+
+#Challenge 5:
+SigVs<- ifelse(pval<0.01,1,0) #significant variables at 1%
+NSigVs <- ifelse(pval>0.01,1,0) #non-significant variables at 1%
+sum(SigVs) #9 variables are significant at 1%
+sum(NSigVs) #991 variables non significant
+#Given that nature of the data, I expected 0 number of significant variables. However, I found 9 significant variables at 1% significance level as shown above.
+
+
+#Challenge 6:
+#BH Procedure
+adjusted_pval <- p.adjust(pval, method="BH")
+
+# Identify the true discoveries using a threshold of 0.1
+true_discoveries <- which(adjusted_pval < 0.1)
+
+# Calculate the sum of true discoveries
+sum_true_discoveries <- sum(true_discoveries)
+
+# Print the sum of true discoveries
+print(paste("Estimated number of true discoveries:", sum_true_discoveries))
+
+```
+
+
+
+```{r}
+####################################################
+############ Autos Dataset #########################
+############ Section 2: 7:10 #######################
+####################################################
+#install.packages("ISLR")
+library(stargazer)
+library(ISLR)
+library(ggplot2)#for visuals
+
+
+#Challenge 7:
+Auto <- read.csv("autos.csv")
+str(Auto) #discover contents of the data
+colnames(Auto) #View columns of the dataset
+summary(Auto) #summary statistics
+stargazer(Auto,type="text",title="Summary Statistics of Auto",out="table1.txt")
+
+#The data has 24 variables and 192 observations. The glance of data shows that string variables are 11 
+#and the rest are numeric. Some numeric variables of the data are fuel system, engine type, engine location, 
+#drive wheels, body style, number of doors, and aspirations. The numeric variables include price, wheel base, length, 
+#width, height, curb weight, compression ratio, number of cylinders, horsepower, highway miles per gallon, and price among others
+
+#Price range from $5118 to $45400, and the average price 13285
+
+
+#Plotting histogram to check for frequency distribution:
+ggplot(Auto, aes(x=wheel_base))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Wheel base")+labs(y= "Frequency" , x="Wheel base")
+ggplot(Auto, aes(x=length))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Length")+labs(y= "Frequency" , x="Length")
+ggplot(Auto, aes(x=width))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Width")+labs(y= "Frequency" , x="Width")
+ggplot(Auto, aes(x=height))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Height")+labs(y= "Frequency" , x="Height")
+ggplot(Auto, aes(x=curb_weight))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Curb Weight")+labs(y= "Frequency" , x="Curb Weight")
+ggplot(Auto, aes(x=num_of_cylinders))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Number of Cylinders")+labs(y= "Frequency" , x="Number of Cylinders")
+ggplot(Auto, aes(x=engine_size))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Engine Size")+labs(y= "Frequency" , x="Engine Size")
+ggplot(Auto, aes(x=bore))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Bore")+labs(y= "Frequency" , x="Bore")
+ggplot(Auto, aes(x=stroke))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Stroke")+labs(y= "Frequency" , x="Stroke")
+ggplot(Auto, aes(x=compression_ratio))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Compression Ratio")+labs(y= "Frequency" , x="Compression Ratio")
+ggplot(Auto, aes(x=horsepower))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Horse Power")+labs(y= "Frequency" , x="Horse Power")
+ggplot(Auto, aes(x=peak_rpm))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Peak rpm")+labs(y= "Frequency" , x="Peak rpm")
+ggplot(Auto, aes(x=city_mpg))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of City mpg")+labs(y= "Frequency" , x="City mpg")
+ggplot(Auto, aes(x=highway_mpg))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Highway mpg")+labs(y= "Frequency" , x="Highway mpg")
+ggplot(Auto, aes(x=price))+geom_histogram(bins=7,color="black", fill="white")+ggtitle("Distribution of Price")+labs(y= "Frequency" , x="Price")
+
+#Adding density plots to establish shape of the curve:
+new_autos <- Auto[sapply(Auto, is.numeric)]
+for (col in names(new_autos)) {
+  hist(new_autos[[col]], probability = TRUE, col = "gray", border = "white")
+  xfit<-seq(min(new_autos[[col]]), max(new_autos[[col]]), length=40)
+  yfit<-dnorm(xfit, mean=mean(new_autos[[col]]), sd=sd(new_autos[[col]]))
+  lines(xfit, yfit, col="red", lwd=2)
+}
+# All Follows a normal distribution curve
+# curb_weight, wheel_base, number_of_cylinders, engine_size, compression_ratio, horse_power, peak_rpm, city_mpg, high_way_mpg, and price  follow right-skewed distributions
+# bore and stroke follow a left-skewed  distributions
+# length, width, and height follow 'almost' perfectly symmetric normal distribution
+
+#The distribution of car prices shows that the prices do not conform to normal distribution 
+#because they have a longer right tail. There is also a very high likelihood that there are 
+#exceptionally abnormal prices than average prices of the selected cars. 
+#It appears vehicles sold between $10000 and $20000 are more than those sold less than $10000 or more than $20000.
+
+
+
+#Challenge 8:
+
+#Preliminary checks before fitting the model
+#Using boxplot to check for outliers:
+#for (col in new_autos) {
+#  boxplot(col)
+#}
+boxplot(Auto$wheel_base)
+boxplot(Auto$length) # no outlier
+boxplot(Auto$width) 
+boxplot(Auto$height) # no outlier
+boxplot(Auto$curb_weight) # no outlier
+boxplot(Auto$num_of_cylinders)
+boxplot(Auto$engine_size)
+boxplot(Auto$stroke)
+boxplot(Auto$bore) # no outlier
+boxplot(Auto$compression_ratio)
+boxplot(Auto$horsepower)
+boxplot(Auto$peak_rpm)
+boxplot(Auto$city_mpg)
+boxplot(Auto$highway_mpg)
+boxplot(Auto$price)
+
+#Declaring variables
+price <- Auto$price
+wheel_base <- Auto$wheel_base
+length <- Auto$length
+width <- Auto$width
+height <- Auto$height
+curb_weight <- Auto$curb_weight
+num_of_cylinders <- Auto$num_of_cylinders
+engine_size <- Auto$engine_size
+stroke <- Auto$stroke
+bore <- Auto$bore
+compression_ratio <- Auto$compression_ratio
+horsepower <- Auto$horsepower
+peak_rpm <- Auto$peak_rpm
+city_mpg <- Auto$city_mpg
+highway_mpg <- Auto$highway_mpg
+make <- Auto$make
+fuel_type <- Auto$fuel_type
+aspiration <- Auto$aspiration
+num_of_doors <- Auto$num_of_doors
+body_style <- Auto$body_style
+drive_wheels <- Auto$drive_wheels
+engine_location <- Auto$engine_location
+engine_type <- Auto$engine_type
+fuel_system <- Auto$fuel_system
+
+# create scatter plot price vs wheel base to check for patterns of linear relationships:
+ggplot(data.frame(price, wheel_base), aes(x = wheel_base, y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("Wheel base") + 
+  ylab("Price")
+
+# create scatter plot price vs wheel base: using log transformation
+ggplot(data.frame(price, log(wheel_base)), aes(x = wheel_base, y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot using log for x") + 
+  xlab("Wheel base") + 
+  ylab("Price")
+#No noticeable effect
+
+# create scatter plot price vs length:
+ggplot(data.frame(price, exp(length)), aes(x = length, y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("length") + 
+  ylab("Price")
+#Shows exponential function
+
+# create scatter plot price vs length:
+ggplot(data.frame(price, log(width)), aes(x = width, y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("width") + 
+  ylab("Price")
+#Shows log transformation works better
+
+# create scatter plot price vs height:
+ggplot(data.frame(price, log(height)), aes(x = width, y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("height") + 
+  ylab("Price")
+
+# create scatter plot price vs curb_weight:
+ggplot(data.frame(price, curb_weight), aes(x = curb_weight, y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("curb_weight") + 
+  ylab("Price")
+
+# create scatter plot price vs curb_weight:
+ggplot(data.frame(price, log(num_of_cylinders)), aes(x = log(num_of_cylinders), y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("num_of_cylinders") + 
+  ylab("Price")
+# No interesting trend
+
+# create scatter plot price vs curb_weight:
+ggplot(data.frame(price, engine_size), aes(x = engine_size, y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("num_of_cylinders") + 
+  ylab("Price")
+# Log works better
+
+
+# create scatter plot price vs curb_weight:
+ggplot(data.frame(price, log(stroke)), aes(x = log(stroke), y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("stroke") + 
+  ylab("Price")
+# No interesting trent
+
+# create scatter plot price vs curb_weight:
+ggplot(data.frame(price, (bore)), aes(x = (bore), y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("bore") + 
+  ylab("Price")
+# Log has no significant effect
+
+ggplot(data.frame(price, log(compression_ratio)), aes(x = log(compression_ratio), y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("compression_ratio") + 
+  ylab("Price")
+# Log has no significant effect
+
+ggplot(data.frame(price, 1/(compression_ratio)), aes(x = 1/(compression_ratio), y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("compression_ratio") + 
+  ylab("Price")
+# Inverse transformation
+
+ggplot(data.frame(price, 1/(compression_ratio)**2), aes(x = 1/(compression_ratio)**2, y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("compression_ratio") + 
+  ylab("Price")
+# Inverse transformation
+
+ggplot(data.frame(price, log(horsepower)), aes(x = log(horsepower), y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("horsepower") + 
+  ylab("Price")
+# Log works better
+
+ggplot(data.frame(price, log(peak_rpm)), aes(x = log(peak_rpm), y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("peak_rpm") + 
+  ylab("Price")
+# Log has no noticeable effect
+
+ggplot(data.frame(price, log(city_mpg)), aes(x = log(city_mpg), y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("city_mpg") + 
+  ylab("Price")
+# Log works better
+
+
+ggplot(data.frame(price, (highway_mpg)), aes(x = (highway_mpg), y = price)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot") + 
+  xlab("highway_mpg") + 
+  ylab("Price")
+# Log works better
+
+## Create dummy variables for fuel_type
+gas <- ifelse(Auto$fuel_type == "gas", 1, 0)   
+diesel <- ifelse(Auto$fuel_type == "diesel", 1, 0)
+
+#Building the model:
+#Creating linear regression model to predict price (without transformation of any variable)
+#Using diesel as the base dummy variable
+model_1 <-  lm(price ~ gas + wheel_base + length + width + height + curb_weight + num_of_cylinders + engine_size + 
+                 stroke + bore + compression_ratio + horsepower + peak_rpm + city_mpg + highway_mpg + 
+                 factor(make) + factor(fuel_type) + factor(aspiration) + factor(num_of_doors) + factor(body_style) + 
+                 factor(drive_wheels) + factor(engine_location) + factor(fuel_system) )
+summary(model_1)
+
+
+#Creating second linear regression model to predict price (I transformed some variables using log transformation, to correct for outliers)
+#Using diesel as the base dummy variable
+
+model_2 <-  lm(log(price) ~ gas + log(wheel_base) + length + log(width) + height + curb_weight + log(num_of_cylinders) + log(engine_size) + 
+              log(stroke) + bore + log(compression_ratio) + log(horsepower) + log(peak_rpm) + log(city_mpg) + log(highway_mpg) + 
+              factor(make) + factor(fuel_type) + factor(aspiration) + factor(num_of_doors) + factor(body_style) + 
+              factor(drive_wheels) + factor(engine_location) + factor(fuel_system) )
+
+summary(model_2)
+
+#Comparing AIC of model 1 vs model 2
+BIC(model_1)
+BIC(model_2)
+#Choosing model_2 (with log transformation) because it has significantly lower AIC score. Also because model_2 explained 95.54% of the variation in prices unlike model_1 with 94.85%.
+
+
+#Explanation of model:
+plot(model_2) #Checking model diagnostics (Graph of Residuals vs Fitted)
+#I chose a multiple regression model to predict vehicle prices using the numeric variables 
+#and two factors (fuel type and drive wheels) the variables but I converted the origin of the vehicles to a factor. 
+#Further, owing to the differences in mean and median values of the variables shown in summary statistics 
+#I also converted the wheel base, curb weight, engine size, horsepower, and price to natural logarithms before performing the ordinary least squares. 
+
+#The model showed that at 0.05 significance level:
+#wheel_base, fuel_type_gas, height, curb_weight, (make)bmw, (make)dodge, (make)isuzu, (make)mitsubishi, (make)peugeot,
+#(make)plymouth , (make)porsche, (aspiration)turbo, (body_style)hatchback, (body_style)sedan, (body_style)wagon, 
+# (engine_location)rear, (fuel_system)mpfi, and (fuel_system)spfi) are significant
+ 
+#The width of the car reported the highest positive marginal effects while city miles per gallon showed highest significant negative marginal effects. 
+#About 95.54% of the variation in the prices of the cars was explained by the chosen model (model_2). 
+ 
+##Results show that, keeping diesel as the underlining fuel_type:
+#For every 1 unit increase in gas, price decreases by 0.3028
+#For every 1 unit increase in wheel_base, price increases by log of 1.839
+#For every 1 unit increase in height, price increases by 0.16945
+#For every 1 unit increase in curb_weight, price increases by 0.1984375
+
+
+
+
+#Challenge 9:
+pvals <- summary(model_2)$coef[ , "Pr(>|t|)"]
+sum(pvals>0) 
+
+#To check for normality of errors
+# Extract the residuals
+residuals <- residuals(model_2)
+
+# Create a Q-Q plot to show normality or errors
+qqnorm(residuals)
+qqline(residuals)
+
+
+# In this model, false discoveries are an issue because concluding that a variable has no significant explanatory effects
+# may lead to false recommendations in policies related to fuel efficiency of the cars.
+
+#Reasons why false discovery might be an issue in this model include the following:
+
+#1: Presence of Outliers:
+# As shown in the box plots above there are outliers in the dataset and presence of outliers can greatly affect the results of a multiple regression equation, causing false discoveries.
+
+
+#2: Non-normality of errors: 
+#As shown in the Q-Q plot above, residuals deviate from the straight line on the Q-Q plot which indicates deviation from normality. And f the errors in the regression equation are not normally distributed, it can affect the p-values and lead to false discoveries.
+
+#3: Large number of predictors.
+# Even though 23 out of the 53 estimators are significant at 0.05 sig level ( and 30 estimators are insignificant) having many predictor variables  included in the regression equation increases chances of finding false positives increases.
+
+#4: Sample size:
+# The summary statistics show about 193 valus rows. There's likelihood of the multiple regression equation being influenced by random variation which can also lead to false discoveries.
+
+
+
+#Challenge 10:
+q <- 0.1
+pvals <- summary(model_2)$coef[ , "Pr(>|t|)"]
+
+## Adjust the adjusted p-values using the BH procedure
+padj_pvals <- p.adjust(pvals, method = "BH")
+
+# Identify the true discoveries using a threshold of q = 0.1
+true_discoveries <- which(padj_pvals < q)
+true_discoveries
+
+# Calculate the count of true discoveries
+true_discoveries_count <- length(true_discoveries)
+
+# Print the sum of true discoveries
+print(paste("Estimated number of true discoveries after BH's adjustment:", true_discoveries_count))
+
+#Showing on a histogram
+hist(pvals, col ="blue", xlim = c(0.0, 1.0), ylim = c(0,25),main="Distribution of p-values")
+hist(padj_pvals,add=TRUE,col="orange")
+
+# sort the p-values
+pv_sorted <- sort(pvals)
+
+# create the rank
+k <- c(1:53)
+
+# calculate BH equation
+q <- 0.1
+N <- length(k)
+
+BH <- (pv_sorted <= k*q/N)
+pv_sorted
+# count the estimated true discoveries
+true_discovery <- sum(BH)
+
+# Cut-off p-value (p*)
+co_pvalue <- pv_sorted[true_discovery]
+print(paste("Cut-off p-value =", co_pvalue))
+
+# Plot the cutoff line together with the significant and insignificant p-values
+# Extract p-value cutoff for E[fdf] < q
+fdr <- function(pvals, q, plotit){
+  pvals <- pvals[!is.na(pvals)]
+  N <- length(pvals)
+  
+  k <- rank(pvals, ties.method="min")
+  alpha <- max(pvals[ pvals <= (q*k/N) ])
+  
+  if(plotit){
+    sig <- factor(pvals <= alpha)
+    o <- order(pvals)
+    plot(pvals[o], log="xy", col=c("grey60","red")[sig[o]], pch=20, 
+      ylab="p-values", xlab="Tests ordered by p-value", main = paste('FDR =',q))
+    lines(1:N, q*(1:N) / N)
+  }
+  
+}
+fdr(pvals, q, plotit=TRUE)
+
+```
+
+## Ridwan Abdusalam
